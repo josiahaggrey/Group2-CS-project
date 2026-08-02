@@ -77,6 +77,21 @@ pip install -r requirements.txt
    `create_grid_map(substations, lines)` from `analysis_starter.py`, or add it to
    `main()`.
 
+## Testing
+
+```bash
+pip install pytest
+pytest
+```
+
+`tests/` covers Tasks 1.1-1.3: unit tests against small synthetic DataFrames
+for each function's logic (does `validate_relationships` actually catch a bad
+foreign key? does `find_and_handle_orphans` drop only the orphan?), plus
+integration tests that run the real scripts end-to-end via the `pipeline`
+fixture and check the actual output files (row counts, no dangling foreign
+keys, no missing values, reproducibility across re-runs, valid/complete
+lookup JSON). 40 tests, all passing as of the last run.
+
 ## Task progress (Part A of the spec)
 
 - [x] **Task 1.1** — Data Cleaning and Preprocessing (`tasks/task_1_1_data_cleaning.py`)
