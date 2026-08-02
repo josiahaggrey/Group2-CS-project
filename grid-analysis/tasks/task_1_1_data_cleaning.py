@@ -26,6 +26,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
+from report_utils import dataframe_to_markdown_table
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_DIR = os.path.join(BASE_DIR, "data")
 CLEAN_DIR = os.path.join(BASE_DIR, "data", "cleaned")
@@ -154,22 +156,6 @@ def basic_stats_summary(df, name):
     return df[numeric_cols].describe().round(2)
 
 
-def dataframe_to_markdown_table(df):
-    """Minimal markdown-table formatter, used instead of DataFrame.to_markdown()
-    so the report doesn't pull in the optional `tabulate` dependency."""
-    if df.empty:
-        return "_(no numeric columns)_"
-    header = ["stat"] + list(df.columns)
-    rows = [[str(idx)] + [str(v) for v in row] for idx, row in df.iterrows()]
-    col_widths = [max(len(str(r[i])) for r in ([header] + rows)) for i in range(len(header))]
-
-    def fmt_row(row):
-        return "| " + " | ".join(str(v).ljust(col_widths[i]) for i, v in enumerate(row)) + " |"
-
-    separator = "| " + " | ".join("-" * w for w in col_widths) + " |"
-    return "\n".join([fmt_row(header), separator] + [fmt_row(r) for r in rows])
-
-
 def clean_dataset(raw):
     report_sections = {}
 
@@ -293,7 +279,7 @@ def write_report(raw_inspections, cleaned, report_sections):
         if summary.empty:
             continue
         lines_out.append(f"### {name}\n")
-        lines_out.append(dataframe_to_markdown_table(summary))
+        lines_out.append(dataframe_to_markdown_table(summary, index_label="stat"))
         lines_out.append("\n")
 
     lines_out.append("\n## 6. Output\n")
