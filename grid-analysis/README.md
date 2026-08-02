@@ -22,8 +22,21 @@ pip install -r requirements.txt
 
    Writes `data/utilities.csv`, `data/substations.csv`, `data/lines.csv`.
 
-2. Run the starter analysis (inspection, cleaning, EDA, merging, network analysis,
-   N-1 contingency check):
+2. Run Task 1.1 - data cleaning and preprocessing:
+
+   ```bash
+   python tasks/task_1_1_data_cleaning.py
+   ```
+
+   Writes `data/cleaned/utilities_clean.csv`, `data/cleaned/substations_clean.csv`,
+   `data/cleaned/lines_clean.csv`, and `reports/task_1_1_data_cleaning_report.md`
+   (missing-value strategy, transformations applied, duplicate/relationship/
+   coordinate-bounds checks, and a basic statistics summary). Every downstream
+   task should read from `data/cleaned/`, not the raw files.
+
+3. Run the combined starter analysis (inspection, cleaning, EDA, merging, network
+   analysis, N-1 contingency check — a rougher, all-in-one pass through Part B
+   Tasks 1-5 of the spec):
 
    ```bash
    python analysis_starter.py
@@ -32,12 +45,22 @@ pip install -r requirements.txt
    Writes `data/eda_regions.png`, `data/eda_top_substations.png`,
    `data/network_graph.png`, `data/merged_lines.csv`.
 
-3. Optional: build the interactive map (requires `folium`) by calling
+4. Optional: build the interactive map (requires `folium`) by calling
    `create_grid_map(substations, lines)` from `analysis_starter.py`, or add it to
    `main()`.
 
-## Next steps
+## Task progress (Part A of the spec)
 
-Split `analysis_starter.py`'s tasks into a Jupyter notebook per the project's Week 1–3
-task breakdown (EDA, business intelligence, geospatial analysis, dashboard) — see the
-course spec for the full task list, deliverables, and evaluation criteria.
+- [x] **Task 1.1** — Data Cleaning and Preprocessing (`tasks/task_1_1_data_cleaning.py`)
+- [ ] Task 1.2 — Exploratory Data Analysis
+- [ ] Task 1.3 — Data Integration and Relationship Mapping
+- [ ] Task 2.1 — Network Analysis
+- [ ] Task 2.2 — Geographic and Geospatial Analysis
+- [ ] Task 2.3 — Business Intelligence and Reliability Analysis
+- [ ] Task 3.1 — Comprehensive Dashboard Development
+- [ ] Task 3.2 — Advanced Visualisations and Insights
+- [ ] Task 3.3 — Documentation and Presentation
+
+`analysis_starter.py` is a rough, ungraded pass through the equivalent Part B
+tasks and is useful as a reference, but the `tasks/task_N_N_*.py` scripts are
+the actual per-task deliverables the rubric expects.
