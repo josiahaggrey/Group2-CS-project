@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}My Engagement{% endblock %}
+{% block content %}
+<h1>My Private Engagement</h1>
+<section class="card">
+  <p>Engagement Points: <strong>{{ engagement_points }}</strong></p>
+  <p>
+    You earn a point each time you submit a health task on or before its due date.
+    This history is private to you and is never compared with other patients.
+  </p>
+</section>
+{% endblock %}

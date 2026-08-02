@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Clinician Dashboard{% endblock %}
+{% block content %}
+<h1>Welcome, {{ session.get('username') }}</h1>
+
+<section class="card">
+  <h2>Operational Summary</h2>
+  <p>Pending reviews: <strong>{{ pending_count }}</strong></p>
+  <p>Tasks you've assigned: <strong>{{ tasks|length }}</strong></p>
+  <p>Registered patients: <strong>{{ patients|length }}</strong></p>
+</section>
+
+<section class="card">
+  <h2>Assign a Health Task</h2>
+  <form method="POST" action="{{ url_for('create_task') }}" class="stack-form">
+    <label>Patient
+      <select name="patient_id" required>
+        {% for pid, p in patients.items() %}
+          <option value="{{ pid }}">{{ p.name }} ({{ pid }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Title
+      <input type="text" name="title" required>
+    </label>
+    <label>Instructions
+      <textarea name="description" required></textarea>
+    </label>
+    <label>Due date
+      <input type="date" name="due_date" required>
+    </label>
+    <button type="submit">Assign</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Submissions Awaiting Review</h2>
+  <table>
+    <thead>
+      <tr><th>Patient</th><th>Task</th><th>Submitted</th><th>Status</th><th>Review</th></tr>
+    </thead>
+    <tbody>
+      {% for key, s in submissions.items() %}
+      <tr>
+        <td>{{ s.patient_id }}</td>
+        <td>{{ tasks.get(s.task_id, {}).get('title', s.task_id) }}</td>
+        <td>{{ s.timestamp }}</td>
+        <td>{{ s.review_status }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('review_submission', key=key) }}" class="inline-form">
+            <select name="outcome">
+              {% for outcome in review_outcomes %}
+                <option value="{{ outcome }}" {% if outcome == s.review_status %}selected{% endif %}>{{ outcome }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="notes" placeholder="Notes" value="{{ s.notes or '' }}">
+            <button type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No submissions yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Send Announcement</h2>
+  <form method="POST" action="{{ url_for('send_message') }}" class="stack-form">
+    <input type="hidden" name="broadcast" value="on">
+    <label>Message
+      <textarea name="content" required></textarea>
+    </label>
+    <button type="submit">Broadcast to all patients</button>
+  </form>
+</section>
+{% endblock %}

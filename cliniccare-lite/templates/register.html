@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<h1>Register</h1>
+<form method="POST" class="stack-form">
+  <label>Role
+    <select name="role">
+      <option value="patient">Patient</option>
+      <option value="clinician">Clinician</option>
+    </select>
+  </label>
+  <label>
+    User ID (8 digits — clinician IDs end in 0000; patient IDs end in a
+    registration year between 2022 and 2028, e.g. 12342024)
+    <input type="text" name="user_id" pattern="\d{8}" maxlength="8" required>
+  </label>
+  <label>Full Name
+    <input type="text" name="name" required>
+  </label>
+  <label>Email
+    <input type="email" name="email" required>
+  </label>
+  <label>
+    Password (8+ chars, upper, lower, digit, special character e.g. !@#$%^&amp;*)
+    <input type="password" name="password" required>
+  </label>
+  <button type="submit">Register</button>
+</form>
+<p>Already registered? <a href="{{ url_for('login') }}">Log in</a>.</p>
+{% endblock %}

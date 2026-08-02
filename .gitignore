@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# GridCare-Lite
+gridcare-lite/gridcare.db
+
+# ClinicCare-Lite runtime data/uploads (keep the empty JSON scaffolding, ignore
+# per-patient submitted files)
+cliniccare-lite/submissions/*
+!cliniccare-lite/submissions/.gitkeep
+
+# grid-analysis generated artifacts (regenerate with generate_dataset.py /
+# analysis_starter.py rather than committing them)
+grid-analysis/data/*.csv
+grid-analysis/data/*.png
+grid-analysis/data/*.html
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

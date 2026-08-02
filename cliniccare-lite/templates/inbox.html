@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Inbox{% endblock %}
+{% block content %}
+<h1>Inbox</h1>
+<p class="notice">
+  This messaging channel is <strong>not monitored continuously</strong> and must
+  not be used for emergencies. For urgent issues, contact the clinic directly.
+</p>
+
+<section class="card">
+  <table>
+    <thead><tr><th>From</th><th>Message</th><th>Sent</th></tr></thead>
+    <tbody>
+      {% for mid, m in messages.items()|sort(attribute='1.timestamp', reverse=True) %}
+      <tr>
+        <td>{{ 'Clinic announcement' if m.broadcast else m.sender_id }}</td>
+        <td>{{ m.content }}</td>
+        <td>{{ m.timestamp }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">No messages yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Send a Message</h2>
+  <form method="POST" action="{{ url_for('send_message') }}" class="stack-form">
+    <label>Recipient ID
+      <input type="text" name="recipient_id" pattern="\d{8}" maxlength="8" required>
+    </label>
+    <label>Message
+      <textarea name="content" required></textarea>
+    </label>
+    <button type="submit">Send</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,92 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+body.colorful-theme {
+  background: #f4f7fb;
+  color: #1a1a1a;
+}
+
+body.dark-theme {
+  background: #111318;
+  color: #e8e8e8;
+}
+
+.topnav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: #2f6f9f;
+  color: white;
+  flex-wrap: wrap;
+}
+
+.dark-theme .topnav { background: #1a2332; }
+
+.topnav a { color: white; text-decoration: none; margin-left: 1rem; }
+.topnav a:first-child { margin-left: 0; }
+.brand { font-weight: bold; font-size: 1.1rem; }
+.user-chip { margin-left: 1rem; opacity: 0.85; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.dark-theme .card { background: #1c212b; }
+
+.stack-form { display: flex; flex-direction: column; gap: 0.75rem; max-width: 480px; }
+.inline-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+input, select, textarea, button {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+}
+
+.dark-theme input, .dark-theme select, .dark-theme textarea {
+  background: #262c38;
+  color: #e8e8e8;
+  border-color: #3a4152;
+}
+
+button {
+  background: #2f6f9f;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+button:hover { background: #255a80; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e2e2; font-size: 0.9rem; }
+.dark-theme th, .dark-theme td { border-color: #333a48; }
+
+.flashes { list-style: none; padding: 0 1rem; margin: 1rem auto; max-width: 900px; }
+.flash { padding: 0.6rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; }
+.flash-success { background: #d6f5df; color: #14532d; }
+.flash-error { background: #fdd; color: #7a1f1f; }
+.flash-warning { background: #fff3cd; color: #7a5b00; }
+
+.notice {
+  background: #fff3cd;
+  color: #7a5b00;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+}

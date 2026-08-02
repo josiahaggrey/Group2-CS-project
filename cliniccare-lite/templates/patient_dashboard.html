@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Patient Dashboard{% endblock %}
+{% block content %}
+<h1>Welcome, {{ session.get('username') }}</h1>
+
+<section class="card">
+  <h2>Theme</h2>
+  <form method="POST" action="{{ url_for('set_theme') }}" class="inline-form">
+    <button type="submit" name="theme" value="colorful">Colourful</button>
+    <button type="submit" name="theme" value="dark">Dark</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>My Health Tasks</h2>
+  <table>
+    <thead>
+      <tr><th>Title</th><th>Due</th><th>Status</th><th>Outcome</th><th>Submit</th></tr>
+    </thead>
+    <tbody>
+      {% for tid, t in tasks.items() %}
+      {% set submission = submissions.values()|selectattr('task_id', 'equalto', tid)|first %}
+      <tr>
+        <td>{{ t.title }}<br><small>{{ t.description }}</small></td>
+        <td>{{ t.due_date }}</td>
+        <td>{{ submission.review_status if submission else 'Not submitted' }}</td>
+        <td>{{ submission.notes if submission and submission.notes else '-' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('submit_task', task_id=tid) }}"
+                enctype="multipart/form-data" class="inline-form">
+            <input type="file" name="file" accept=".txt,.csv,.pdf" required>
+            <button type="submit">Upload</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No tasks assigned yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Private Engagement</h2>
+  <p>You have <strong>{{ engagement_points }}</strong> Engagement Points from on-time
+     task completions. Visible only to you.</p>
+</section>
+{% endblock %}
