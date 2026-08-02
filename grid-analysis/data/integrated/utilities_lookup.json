@@ -1,0 +1,82 @@
+{
+  "1": {
+    "name": "Electricity Company of Ghana",
+    "alias": "ECG",
+    "code": "ECG",
+    "type": "Distribution",
+    "country": "Ghana",
+    "active": "Y"
+  },
+  "2": {
+    "name": "Northern Electricity Distribution Company",
+    "alias": "NEDCo",
+    "code": "NED",
+    "type": "Distribution",
+    "country": "Ghana",
+    "active": "Y"
+  },
+  "3": {
+    "name": "Ghana Grid Company",
+    "alias": "GRIDCo",
+    "code": "GRD",
+    "type": "Transmission",
+    "country": "Ghana",
+    "active": "Y"
+  },
+  "4": {
+    "name": "Volta River Authority",
+    "alias": "VRA",
+    "code": "VRA",
+    "type": "Generation",
+    "country": "Ghana",
+    "active": "Y"
+  },
+  "5": {
+    "name": "Compagnie Ivoirienne d'Electricite",
+    "alias": "CIE",
+    "code": "CIE",
+    "type": "Distribution",
+    "country": "Cote d'Ivoire",
+    "active": "Y"
+  },
+  "6": {
+    "name": "Communaute Electrique du Benin",
+    "alias": "CEB",
+    "code": "CEB",
+    "type": "Transmission",
+    "country": "Togo/Benin",
+    "active": "Y"
+  },
+  "7": {
+    "name": "Societe Beninoise d'Energie Electrique",
+    "alias": "SBEE",
+    "code": "SBE",
+    "type": "Distribution",
+    "country": "Benin",
+    "active": "Y"
+  },
+  "8": {
+    "name": "Electricite de Guinee",
+    "alias": "EDG",
+    "code": "EDG",
+    "type": "Distribution",
+    "country": "Guinea",
+    "active": "N"
+  },
+  "9": {
+    "name": "Sonabel",
+    "alias": "SONABEL",
+    "code": "SNB",
+    "type": "Distribution",
+    "country": "Burkina Faso",
+    "active": "Y"
+  },
+  "10": {
+    "name": "Enclave Power Company",
+    "alias": "EPC",
+    "code": "EPC",
+    "type": "Generation",
+    "country": "Ghana",
+    "active": "N"
+  }
+}

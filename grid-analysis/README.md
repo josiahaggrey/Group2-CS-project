@@ -46,7 +46,23 @@ pip install -r requirements.txt
    region, line status proportions, initial hypotheses, and patterns for further
    investigation) plus the supporting charts under `reports/figures/task_1_2/`.
 
-4. Run the combined starter analysis (inspection, cleaning, EDA, merging, network
+4. Run Task 1.3 - data integration and relationship mapping:
+
+   ```bash
+   python tasks/task_1_3_data_integration.py
+   ```
+
+   Reads from `data/cleaned/`. Drops any orphaned lines (a foreign key that
+   doesn't resolve), then joins lines with both endpoint substations and the
+   operating utility into a single wide table. Writes
+   `data/integrated/master_dataset.csv`, `data/integrated/substations_lookup.json`,
+   `data/integrated/utilities_lookup.json`, and
+   `reports/task_1_3_data_integration_report.md` (FK relationships, orphan
+   handling, join validation, lookup sizes, and a preview). See also
+   [`docs/entity_relationship_diagram.md`](docs/entity_relationship_diagram.md)
+   and [`docs/data_dictionary.md`](docs/data_dictionary.md).
+
+5. Run the combined starter analysis (inspection, cleaning, EDA, merging, network
    analysis, N-1 contingency check — a rougher, all-in-one pass through Part B
    Tasks 1-5 of the spec):
 
@@ -57,7 +73,7 @@ pip install -r requirements.txt
    Writes `data/eda_regions.png`, `data/eda_top_substations.png`,
    `data/network_graph.png`, `data/merged_lines.csv`.
 
-5. Optional: build the interactive map (requires `folium`) by calling
+6. Optional: build the interactive map (requires `folium`) by calling
    `create_grid_map(substations, lines)` from `analysis_starter.py`, or add it to
    `main()`.
 
@@ -65,7 +81,7 @@ pip install -r requirements.txt
 
 - [x] **Task 1.1** — Data Cleaning and Preprocessing (`tasks/task_1_1_data_cleaning.py`)
 - [x] **Task 1.2** — Exploratory Data Analysis (`tasks/task_1_2_eda.py`)
-- [ ] Task 1.3 — Data Integration and Relationship Mapping
+- [x] **Task 1.3** — Data Integration and Relationship Mapping (`tasks/task_1_3_data_integration.py`)
 - [ ] Task 2.1 — Network Analysis
 - [ ] Task 2.2 — Geographic and Geospatial Analysis
 - [ ] Task 2.3 — Business Intelligence and Reliability Analysis
