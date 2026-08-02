@@ -27,7 +27,7 @@ matplotlib.use("Agg")  # headless-safe backend - no display required to save PNG
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from report_utils import dataframe_to_markdown_table
+from report_utils import dataframe_to_markdown_table, require_files
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLEAN_DIR = os.path.join(BASE_DIR, "data", "cleaned")
@@ -41,9 +41,11 @@ TOP_N = 10
 
 
 def load_clean():
-    utilities = pd.read_csv(os.path.join(CLEAN_DIR, "utilities_clean.csv"))
-    substations = pd.read_csv(os.path.join(CLEAN_DIR, "substations_clean.csv"))
-    lines = pd.read_csv(os.path.join(CLEAN_DIR, "lines_clean.csv"))
+    paths = [os.path.join(CLEAN_DIR, f"{name}_clean.csv")
+             for name in ("utilities", "substations", "lines")]
+    require_files(paths, "Run tasks/task_1_1_data_cleaning.py first "
+                          "(from the grid-analysis/ directory).")
+    utilities, substations, lines = (pd.read_csv(p) for p in paths)
     return utilities, substations, lines
 
 

@@ -1,4 +1,15 @@
 """Shared helpers for building the per-task markdown reports."""
+import os
+
+
+def require_files(paths, hint):
+    """Fail with a clear, actionable message instead of a raw traceback when an
+    earlier pipeline step (e.g. generate_dataset.py or a prior task script)
+    hasn't been run yet."""
+    missing = [p for p in paths if not os.path.exists(p)]
+    if missing:
+        missing_list = "\n".join(f"  - {p}" for p in missing)
+        raise FileNotFoundError(f"Missing required input file(s):\n{missing_list}\n\n{hint}")
 
 
 def dataframe_to_markdown_table(df, index_label="index"):

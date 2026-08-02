@@ -26,7 +26,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from report_utils import dataframe_to_markdown_table
+from report_utils import dataframe_to_markdown_table, require_files
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_DIR = os.path.join(BASE_DIR, "data")
@@ -45,6 +45,20 @@ NUMERIC_COLUMNS = {
     "utilities": [],
     "substations": ["Latitude", "Longitude", "Voltage (kV)", "Capacity (MVA)", "Commissioning Year"],
     "lines": ["Voltage (kV)", "Length (km)", "Capacity (MVA)"],
+}
+
+# ID/foreign-key columns coerced to numeric separately from NUMERIC_COLUMNS so
+# they're validated for type consistency but never end up in the "basic
+# statistics summary" (a mean/std of an ID column is meaningless). Without this,
+# a real-world extract where an ID column got read as strings (e.g. one stray
+# non-numeric value in the column forces object dtype for the whole column)
+# would silently break the isin()-based relationship checks below: comparing
+# int64 substation IDs against stringified line IDs never matches, and every
+# line looks like an orphan even when the data is fine.
+ID_COLUMNS = {
+    "utilities": ["Utility ID"],
+    "substations": ["Substation ID"],
+    "lines": ["Line ID", "Utility ID", "Source Substation ID", "Destination Substation ID"],
 }
 
 # Documented imputation strategy per dataset. Applied even though the seeded
@@ -71,10 +85,10 @@ IMPUTATION_STRATEGY = {
 
 
 def load_raw():
-    utilities = pd.read_csv(os.path.join(RAW_DIR, "utilities.csv"))
-    substations = pd.read_csv(os.path.join(RAW_DIR, "substations.csv"))
-    lines = pd.read_csv(os.path.join(RAW_DIR, "lines.csv"))
-    return {"utilities": utilities, "substations": substations, "lines": lines}
+    paths = {name: os.path.join(RAW_DIR, f"{name}.csv")
+             for name in ("utilities", "substations", "lines")}
+    require_files(paths.values(), "Run generate_dataset.py first (from the grid-analysis/ directory).")
+    return {name: pd.read_csv(path) for name, path in paths.items()}
 
 
 def inspect(df, name):
@@ -93,9 +107,10 @@ def standardize_missing_indicators(df):
 
 
 def enforce_dtypes(df, name):
-    """Coerce declared numeric columns to numeric, tracking values that failed to convert."""
+    """Coerce declared numeric/ID columns to numeric, tracking values that failed to convert."""
     coercion_issues = {}
-    for col in NUMERIC_COLUMNS.get(name, []):
+    columns_to_coerce = NUMERIC_COLUMNS.get(name, []) + ID_COLUMNS.get(name, [])
+    for col in columns_to_coerce:
         if col not in df.columns:
             continue
         before_non_null = df[col].notna().sum()
@@ -161,6 +176,7 @@ def clean_dataset(raw):
 
     # ---- utilities -----------------------------------------------------
     utilities = standardize_missing_indicators(raw["utilities"].copy())
+    utilities, dtype_issues_util = enforce_dtypes(utilities, "utilities")
     utilities, dropped_utilities = drop_rows_missing_key(utilities, "Utility ID")
     utility_dupe_ids = check_duplicate_keys(utilities, "Utility ID")
     utilities = utilities.drop_duplicates()
@@ -195,6 +211,7 @@ def clean_dataset(raw):
         "lines": line_dupe_ids["Line ID"].tolist(),
     }
     report_sections["dtype_coercion_issues"] = {
+        "utilities": dtype_issues_util,
         "substations": dtype_issues_sub,
         "lines": dtype_issues_lines,
     }
@@ -268,10 +285,12 @@ def write_report(raw_inspections, cleaned, report_sections):
         "Substations with coordinates outside the plausible West Africa bounding box "
         f"(lat {LAT_BOUNDS}, lon {LON_BOUNDS})",
         report_sections["out_of_bounds_coordinates"]))
+    util_dtype = report_sections["dtype_coercion_issues"]["utilities"]
     sub_dtype = report_sections["dtype_coercion_issues"]["substations"]
     line_dtype = report_sections["dtype_coercion_issues"]["lines"]
-    lines_out.append(format_issue_list("Substation numeric columns with non-numeric values", sub_dtype))
-    lines_out.append(format_issue_list("Line numeric columns with non-numeric values", line_dtype))
+    lines_out.append(format_issue_list("Utility ID column with non-numeric values", util_dtype))
+    lines_out.append(format_issue_list("Substation numeric/ID columns with non-numeric values", sub_dtype))
+    lines_out.append(format_issue_list("Line numeric/ID columns with non-numeric values", line_dtype))
 
     lines_out.append("\n## 5. Basic statistics summary (post-cleaning)\n")
     for name, df in cleaned.items():

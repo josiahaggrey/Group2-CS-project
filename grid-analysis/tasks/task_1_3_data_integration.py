@@ -22,7 +22,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from report_utils import dataframe_to_markdown_table
+from report_utils import dataframe_to_markdown_table, require_files
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLEAN_DIR = os.path.join(BASE_DIR, "data", "cleaned")
@@ -42,9 +42,11 @@ UTILITY_LOOKUP_COLS = {
 
 
 def load_clean():
-    utilities = pd.read_csv(os.path.join(CLEAN_DIR, "utilities_clean.csv"))
-    substations = pd.read_csv(os.path.join(CLEAN_DIR, "substations_clean.csv"))
-    lines = pd.read_csv(os.path.join(CLEAN_DIR, "lines_clean.csv"))
+    paths = [os.path.join(CLEAN_DIR, f"{name}_clean.csv")
+             for name in ("utilities", "substations", "lines")]
+    require_files(paths, "Run tasks/task_1_1_data_cleaning.py first "
+                          "(from the grid-analysis/ directory).")
+    utilities, substations, lines = (pd.read_csv(p) for p in paths)
     return utilities, substations, lines
 
 
@@ -123,21 +125,24 @@ def validate_join(lines_before, master):
 # Step 3: lookup dictionaries
 # ---------------------------------------------------------------------------
 def build_substation_lookup(substations):
-    lookup = {}
-    for _, row in substations.iterrows():
-        lookup[int(row["Substation ID"])] = {
-            new_key: row[old_key] for old_key, new_key in SUBSTATION_LOOKUP_COLS.items()
-        }
-    return lookup
+    # DataFrame.to_dict() has documented, version-stable native-Python-type
+    # conversion (int/float/str, not numpy.int64/float64). Iterating rows with
+    # .iterrows() instead would leave that conversion to pandas' internal
+    # object-array construction, which is an implementation detail rather than
+    # a documented guarantee - and numpy.int64 isn't natively JSON-serializable,
+    # so relying on it risks a lookup that silently serialises numbers as
+    # strings on a different pandas version.
+    lookup_df = substations.set_index("Substation ID")[list(SUBSTATION_LOOKUP_COLS.keys())]
+    lookup_df = lookup_df.rename(columns=SUBSTATION_LOOKUP_COLS)
+    lookup_df.index = lookup_df.index.astype(int)
+    return lookup_df.to_dict(orient="index")
 
 
 def build_utility_lookup(utilities):
-    lookup = {}
-    for _, row in utilities.iterrows():
-        lookup[int(row["Utility ID"])] = {
-            new_key: row[old_key] for old_key, new_key in UTILITY_LOOKUP_COLS.items()
-        }
-    return lookup
+    lookup_df = utilities.set_index("Utility ID")[list(UTILITY_LOOKUP_COLS.keys())]
+    lookup_df = lookup_df.rename(columns=UTILITY_LOOKUP_COLS)
+    lookup_df.index = lookup_df.index.astype(int)
+    return lookup_df.to_dict(orient="index")
 
 
 def write_outputs(master, substation_lookup, utility_lookup):

@@ -1,6 +1,6 @@
 # Task 1.1 - Data Cleaning and Preprocessing Report
 
-_Generated 2026-08-02T13:34:24_
+_Generated 2026-08-02T16:15:24_
 
 ## 1. Raw dataset inspection
 
@@ -67,9 +67,11 @@ _Generated 2026-08-02T13:34:24_
 
 - **Substations with coordinates outside the plausible West Africa bounding box (lat (4.0, 15.0), lon (-18.0, 5.0)):** none found.
 
-- **Substation numeric columns with non-numeric values:** none found.
+- **Utility ID column with non-numeric values:** none found.
 
-- **Line numeric columns with non-numeric values:** none found.
+- **Substation numeric/ID columns with non-numeric values:** none found.
+
+- **Line numeric/ID columns with non-numeric values:** none found.
 
 
 ## 5. Basic statistics summary (post-cleaning)
