@@ -1,6 +1,6 @@
 # Task 1.1 - Data Cleaning and Preprocessing Report
 
-_Generated 2026-08-02T16:15:24_
+_Generated 2026-08-03T17:07:05_
 
 ## 1. Raw dataset inspection
 
@@ -44,9 +44,9 @@ _Generated 2026-08-02T16:15:24_
 
 - Standardised missing-value spellings (['\\N', 'NULL', 'null', '', ' ', 'NA', 'N/A']) to NaN before any other processing.
 
-- Coerced declared numeric columns via pd.to_numeric(errors='coerce') and recorded any values that failed to convert.
+- Coerced declared numeric/ID columns via pd.to_numeric(errors='coerce') and recorded any values that failed to convert.
 
-- Filled missing categorical fields (Region/Type/Status/Country/Line Type) with 'Unknown' rather than dropping the row.
+- Filled missing categorical fields with 'Unknown' rather than dropping the row.
 
 - Removed exact full-row duplicates from each dataset.
 
@@ -67,11 +67,11 @@ _Generated 2026-08-02T16:15:24_
 
 - **Substations with coordinates outside the plausible West Africa bounding box (lat (4.0, 15.0), lon (-18.0, 5.0)):** none found.
 
-- **Utility ID column with non-numeric values:** none found.
+- **Utilities numeric/ID columns with non-numeric values:** none found.
 
-- **Substation numeric/ID columns with non-numeric values:** none found.
+- **Substations numeric/ID columns with non-numeric values:** none found.
 
-- **Line numeric/ID columns with non-numeric values:** none found.
+- **Lines numeric/ID columns with non-numeric values:** none found.
 
 
 ## 5. Basic statistics summary (post-cleaning)

@@ -1,4 +1,4 @@
-"""Tests for Task 1.3 (data integration and relationship mapping)."""
+"""Tests for Task 1.3 (data integration and relationship mapping - OOP version)."""
 import json
 import os
 
@@ -52,35 +52,35 @@ def make_lines(with_orphan=False):
 # ---------------------------------------------------------------------------
 # Unit tests - synthetic data
 # ---------------------------------------------------------------------------
-def test_find_and_handle_orphans_drops_only_the_orphan():
+def test_orphan_handler_drops_only_the_orphan():
     utilities, substations = make_utilities(), make_substations()
     lines = make_lines(with_orphan=True)
-    clean_lines, report = t13.find_and_handle_orphans(utilities, substations, lines)
+    clean_lines, report = t13.OrphanHandler(utilities, substations, lines).find_and_drop()
     assert report["orphaned_count"] == 1
     assert report["orphaned_line_ids"] == [3]
     assert len(clean_lines) == 2
     assert 3 not in clean_lines["Line ID"].tolist()
 
 
-def test_find_and_handle_orphans_keeps_everything_when_consistent():
+def test_orphan_handler_keeps_everything_when_consistent():
     utilities, substations = make_utilities(), make_substations()
     lines = make_lines(with_orphan=False)
-    clean_lines, report = t13.find_and_handle_orphans(utilities, substations, lines)
+    clean_lines, report = t13.OrphanHandler(utilities, substations, lines).find_and_drop()
     assert report["orphaned_count"] == 0
     assert len(clean_lines) == len(lines)
 
 
-def test_build_master_dataset_preserves_row_count_and_widens_columns():
+def test_dataset_integrator_preserves_row_count_and_widens_columns():
     utilities, substations, lines = make_utilities(), make_substations(), make_lines()
-    master = t13.build_master_dataset(utilities, substations, lines)
+    master = t13.DatasetIntegrator(utilities, substations, lines).build_master_dataset()
     assert len(master) == len(lines)
     for expected_col in ("Source Region", "Destination Region", "Utility Alias"):
         assert expected_col in master.columns
 
 
-def test_build_master_dataset_joins_correct_values():
+def test_dataset_integrator_joins_correct_values():
     utilities, substations, lines = make_utilities(), make_substations(), make_lines()
-    master = t13.build_master_dataset(utilities, substations, lines)
+    master = t13.DatasetIntegrator(utilities, substations, lines).build_master_dataset()
     row = master[master["Line ID"] == 1].iloc[0]
     assert row["Source Name"] == "Alpha"
     assert row["Source Region"] == "R1"
@@ -88,16 +88,25 @@ def test_build_master_dataset_joins_correct_values():
     assert row["Utility Alias"] == "U1"
 
 
-def test_validate_join_passes_for_clean_merge():
+def test_dataset_integrator_validate_join_passes_for_clean_merge():
     utilities, substations, lines = make_utilities(), make_substations(), make_lines()
-    master = t13.build_master_dataset(utilities, substations, lines)
-    issues = t13.validate_join(lines, master)
-    assert issues == []
+    integrator = t13.DatasetIntegrator(utilities, substations, lines)
+    integrator.build_master_dataset()
+    assert integrator.validate_join() == []
 
 
-def test_build_substation_lookup_returns_native_json_serializable_types():
-    substations = make_substations()
-    lookup = t13.build_substation_lookup(substations)
+def test_validate_join_before_build_raises():
+    utilities, substations, lines = make_utilities(), make_substations(), make_lines()
+    integrator = t13.DatasetIntegrator(utilities, substations, lines)
+    try:
+        integrator.validate_join()
+        assert False, "expected RuntimeError when validate_join() runs before build_master_dataset()"
+    except RuntimeError:
+        pass
+
+
+def test_lookup_builder_substation_lookup_returns_native_json_serializable_types():
+    lookup = t13.LookupBuilder(make_substations(), make_utilities()).build_substation_lookup()
     assert 10 in lookup
     entry = lookup[10]
     assert entry["name"] == "Alpha"
@@ -107,8 +116,8 @@ def test_build_substation_lookup_returns_native_json_serializable_types():
     json.dumps(lookup)
 
 
-def test_build_utility_lookup_keys_by_int_utility_id():
-    lookup = t13.build_utility_lookup(make_utilities())
+def test_lookup_builder_utility_lookup_keys_by_int_utility_id():
+    lookup = t13.LookupBuilder(make_substations(), make_utilities()).build_utility_lookup()
     assert set(lookup.keys()) == {1, 2}
     assert lookup[1]["alias"] == "U1"
 
@@ -159,3 +168,11 @@ def test_erd_and_data_dictionary_docs_exist():
     docs_dir = os.path.join(t13.BASE_DIR, "docs")
     assert os.path.exists(os.path.join(docs_dir, "entity_relationship_diagram.md"))
     assert os.path.exists(os.path.join(docs_dir, "data_dictionary.md"))
+
+
+def test_pipeline_run_returns_expected_tuple(pipeline):
+    master, substation_lookup, utility_lookup, join_issues = t13.DataIntegrationPipeline().run()
+    assert len(master) == 55
+    assert len(substation_lookup) == 44
+    assert len(utility_lookup) == 10
+    assert join_issues == []

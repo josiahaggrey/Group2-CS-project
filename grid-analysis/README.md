@@ -77,6 +77,39 @@ pip install -r requirements.txt
    `create_grid_map(substations, lines)` from `analysis_starter.py`, or add it to
    `main()`.
 
+## Design (Tasks 1.1-1.3)
+
+`tasks/task_1_1_data_cleaning.py`, `task_1_2_eda.py`, and
+`task_1_3_data_integration.py` are all written as small class hierarchies
+rather than top-level functions:
+
+- **Task 1.1**: `DatasetCleaner` is a base class implementing the cleaning
+  pipeline once as a template method (`clean()`: standardise missing values
+  -> coerce dtypes -> drop rows missing their key -> find duplicate keys ->
+  impute categoricals -> drop duplicate rows). `UtilitiesCleaner`,
+  `SubstationsCleaner`, and `LinesCleaner` subclass it, each only declaring
+  *what* to clean (key column, numeric/ID columns, imputation strategy) via
+  class attributes - `SubstationsCleaner` additionally adds
+  `check_coordinate_bounds()`, since only substations have coordinates.
+  `RelationshipValidator` and `CleaningReportBuilder` are separate classes
+  with one responsibility each, composed together by the `DataCleaningPipeline`
+  orchestrator.
+- **Task 1.2**: `GridEDAAnalyzer` wraps the three cleaned DataFrames and
+  exposes one method per EDA question from the spec. `ChartGenerator` only
+  knows how to render/save a bar chart or histogram - it never touches the
+  domain data. `EDAReportBuilder` composes an analyzer + a chart generator
+  into the markdown report; `EDAPipeline` is the entry point.
+- **Task 1.3**: `OrphanHandler`, `DatasetIntegrator`, and `LookupBuilder`
+  each own one responsibility (drop unresolvable foreign keys; build+validate
+  the join; serialise ID->record lookups), so each is independently testable.
+  `IntegrationReportBuilder` turns their results into markdown;
+  `DataIntegrationPipeline` is the entry point.
+
+Every orchestrator class (`DataCleaningPipeline`, `EDAPipeline`,
+`DataIntegrationPipeline`) contains no data-transformation logic of its own -
+only wiring - so the actual logic lives in small, single-responsibility
+classes that unit tests can instantiate directly with synthetic data.
+
 ## Testing
 
 ```bash
@@ -84,13 +117,13 @@ pip install pytest
 pytest
 ```
 
-`tests/` covers Tasks 1.1-1.3: unit tests against small synthetic DataFrames
-for each function's logic (does `validate_relationships` actually catch a bad
-foreign key? does `find_and_handle_orphans` drop only the orphan?), plus
-integration tests that run the real scripts end-to-end via the `pipeline`
-fixture and check the actual output files (row counts, no dangling foreign
-keys, no missing values, reproducibility across re-runs, valid/complete
-lookup JSON). 40 tests, all passing as of the last run.
+`tests/` covers Tasks 1.1-1.3: unit tests that instantiate the classes above
+directly against small synthetic DataFrames (does `RelationshipValidator`
+actually catch a bad foreign key? does `OrphanHandler` drop only the orphan?),
+plus integration tests that run the real scripts end-to-end via the
+`pipeline` fixture and check the actual output files (row counts, no
+dangling foreign keys, no missing values, reproducibility across re-runs,
+valid/complete lookup JSON). 47 tests, all passing as of the last run.
 
 ## Task progress (Part A of the spec)
 

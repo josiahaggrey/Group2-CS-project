@@ -1,4 +1,4 @@
-"""Tests for Task 1.2 (exploratory data analysis)."""
+"""Tests for Task 1.2 (exploratory data analysis - OOP version)."""
 import os
 
 import pandas as pd
@@ -7,7 +7,7 @@ import task_1_2_eda as t12
 
 
 # ---------------------------------------------------------------------------
-# Unit tests - synthetic data, exercising each EDA computation directly
+# Unit tests - synthetic data, exercising GridEDAAnalyzer directly
 # ---------------------------------------------------------------------------
 def make_substations():
     return pd.DataFrame({
@@ -46,52 +46,67 @@ def make_utilities():
     return pd.DataFrame({"Utility ID": [1, 2], "Alias": ["ECG", "GRIDCo"]})
 
 
+def make_analyzer():
+    return t12.GridEDAAnalyzer(make_utilities(), make_substations(), make_lines())
+
+
 def test_region_distribution_counts_correctly():
-    result = t12.region_distribution(make_substations())
+    result = make_analyzer().region_distribution()
     assert result.to_dict() == {"Ashanti": 2, "Volta": 2}
 
 
 def test_voltage_distribution_sorted_by_voltage_not_frequency():
-    result = t12.voltage_distribution(make_substations())
+    result = make_analyzer().voltage_distribution()
     assert list(result.index) == [11, 33, 161]  # ascending voltage order
     assert result.loc[33] == 2
 
 
 def test_top_utilities_by_lines_maps_id_to_alias():
-    result = t12.top_utilities_by_lines(make_lines(), make_utilities())
+    result = make_analyzer().top_utilities_by_lines()
     top_row = result.iloc[0]
     assert top_row["Utility"] == "ECG"
     assert top_row["Line Count"] == 2
 
 
 def test_oldest_infrastructure_by_region_sorted_oldest_first():
-    result = t12.oldest_infrastructure_by_region(make_substations())
+    result = make_analyzer().oldest_infrastructure_by_region()
     assert result.index[0] == "Ashanti"  # mean (2000+1990)/2=1995 < Volta's (2010+2020)/2=2015
 
 
 def test_line_status_proportions_sum_to_100():
-    result = t12.line_status_proportions(make_lines())
+    result = make_analyzer().line_status_proportions()
     assert abs(result["Percent"].sum() - 100.0) < 0.01
     assert result.loc["Active", "Count"] == 2
     assert result.loc["Under Maintenance", "Count"] == 1
 
 
 def test_most_connected_substations_counts_source_and_destination():
-    result = t12.most_connected_substations(make_lines(), make_substations(), top_n=4)
+    result = make_analyzer().most_connected_substations(top_n=4)
     # B Substation: 1x source (line 2) + 1x destination (line 1) = 2
     assert result.loc["B Substation", "Connections"] == 2
     assert result.loc["B Substation", "Region"] == "Ashanti"
 
 
 def test_high_capacity_substations_by_region_sorted_descending():
-    result = t12.high_capacity_substations_by_region(make_substations(), top_n=2)
+    result = make_analyzer().high_capacity_substations_by_region(top_n=2)
     assert result.iloc[0]["Short Name"] == "D"  # 500 MVA, highest
     assert result.iloc[0]["Capacity (MVA)"] == 500.0
 
 
 def test_status_distribution_counts_active_and_inactive():
-    result = t12.status_distribution(make_substations())
+    result = make_analyzer().status_distribution()
     assert result.to_dict() == {"Active": 3, "Inactive": 1}
+
+
+def test_generate_hypotheses_references_actual_top_values():
+    hypotheses = make_analyzer().generate_hypotheses()
+    assert len(hypotheses) == 5
+    assert any("Ashanti" in h or "Volta" in h for h in hypotheses)
+
+
+def test_generate_patterns_for_investigation_is_non_empty():
+    patterns = t12.GridEDAAnalyzer.generate_patterns_for_investigation()
+    assert len(patterns) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -152,3 +167,9 @@ def test_region_lookup_uses_full_name_not_short_name(pipeline):
     end = content.index("## 5.")
     section = content[start:end]
     assert "nan" not in section.lower()
+
+
+def test_pipeline_run_returns_a_populated_analyzer(pipeline):
+    analyzer = t12.EDAPipeline().run()
+    assert isinstance(analyzer, t12.GridEDAAnalyzer)
+    assert len(analyzer.substations) == 44

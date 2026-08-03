@@ -1,9 +1,9 @@
 """
-Tests for Task 1.1 (data cleaning and preprocessing).
+Tests for Task 1.1 (data cleaning and preprocessing - OOP version).
 
 Two layers:
-  - Unit tests against tiny synthetic DataFrames, calling the task's own
-    functions directly - fast, deterministic, and they test the *logic*
+  - Unit tests against tiny synthetic DataFrames, instantiating the task's
+    own classes directly - fast, deterministic, and they test the *logic*
     (does it actually catch a bad row?) rather than just "did the seeded
     dataset come out clean" (which it always will, by construction).
   - Integration tests against the real pipeline output (the `pipeline`
@@ -18,20 +18,27 @@ import task_1_1_data_cleaning as t11
 
 
 # ---------------------------------------------------------------------------
-# Unit tests - synthetic data, exercising the logic directly
+# Unit tests - synthetic data, exercising the classes directly
 # ---------------------------------------------------------------------------
 def test_standardize_missing_indicators_replaces_common_spellings():
-    df = pd.DataFrame({"Region": ["Ashanti", "NULL", "", " ", "N/A"]})
-    cleaned = t11.standardize_missing_indicators(df)
-    assert cleaned["Region"].isnull().sum() == 4
-    assert cleaned["Region"].iloc[0] == "Ashanti"
+    df = pd.DataFrame({"Utility ID": [1, 2, 3, 4, 5],
+                        "Region": ["Ashanti", "NULL", "", " ", "N/A"]})
+    cleaner = t11.SubstationsCleaner(df)
+    cleaner.standardize_missing_indicators()
+    assert cleaner.df["Region"].isnull().sum() == 4
+    assert cleaner.df["Region"].iloc[0] == "Ashanti"
 
 
 def test_enforce_dtypes_coerces_valid_numeric_column():
-    df = pd.DataFrame({"Latitude": ["5.6", "6.1", "7.3"]})
-    coerced, issues = t11.enforce_dtypes(df, "substations")
-    assert coerced["Latitude"].dtype.kind == "f"
-    assert issues == {}
+    df = pd.DataFrame({
+        "Substation ID": [1, 2, 3], "Latitude": ["5.6", "6.1", "7.3"],
+        "Longitude": [0.0, 0.0, 0.0], "Voltage (kV)": [11, 11, 11],
+        "Capacity (MVA)": [10.0, 10.0, 10.0], "Commissioning Year": [2000, 2000, 2000],
+    })
+    cleaner = t11.SubstationsCleaner(df)
+    cleaner.enforce_dtypes()
+    assert cleaner.df["Latitude"].dtype.kind == "f"
+    assert cleaner.dtype_coercion_issues == {}
 
 
 def test_enforce_dtypes_coerces_id_columns_too():
@@ -44,38 +51,68 @@ def test_enforce_dtypes_coerces_id_columns_too():
         "Voltage (kV)": [11, 11, 11], "Capacity (MVA)": [10.0, 10.0, 10.0],
         "Commissioning Year": [2000, 2000, 2000],
     })
-    coerced, issues = t11.enforce_dtypes(df, "substations")
-    assert coerced["Substation ID"].isnull().sum() == 1
-    assert issues.get("Substation ID") == 1
+    cleaner = t11.SubstationsCleaner(df)
+    cleaner.enforce_dtypes()
+    assert cleaner.df["Substation ID"].isnull().sum() == 1
+    assert cleaner.dtype_coercion_issues.get("Substation ID") == 1
 
 
 def test_drop_rows_missing_key_drops_null_ids_only():
     df = pd.DataFrame({"Utility ID": [1, None, 3], "Name": ["A", "B", "C"]})
-    cleaned, dropped = t11.drop_rows_missing_key(df, "Utility ID")
-    assert dropped == 1
-    assert len(cleaned) == 2
-    assert cleaned["Utility ID"].tolist() == [1, 3]
+    cleaner = t11.UtilitiesCleaner(df)
+    cleaner.drop_rows_missing_key()
+    assert cleaner.dropped_missing_key == 1
+    assert len(cleaner.df) == 2
+    assert cleaner.df["Utility ID"].tolist() == [1, 3]
 
 
-def test_check_duplicate_keys_detects_duplicates():
+def test_find_duplicate_keys_detects_duplicates():
     df = pd.DataFrame({"Substation ID": [1, 2, 2, 3], "Name": ["A", "B", "B-dup", "C"]})
-    dupes = t11.check_duplicate_keys(df, "Substation ID")
-    assert set(dupes["Substation ID"]) == {2}
-    assert len(dupes) == 2  # both rows sharing the duplicated key
+    cleaner = t11.SubstationsCleaner(df)
+    cleaner.find_duplicate_keys()
+    assert set(cleaner.duplicate_key_ids) == {2}
+    assert cleaner.duplicate_key_ids.count(2) == 2  # both rows sharing the duplicated key
 
 
 def test_check_coordinate_bounds_flags_outliers():
-    substations = pd.DataFrame({
+    df = pd.DataFrame({
         "Substation ID": [1, 2, 3],
         "Name": ["In Bounds", "Bad Latitude", "Bad Longitude"],
         "Latitude": [6.0, 90.0, 6.0],
         "Longitude": [-1.0, -1.0, 200.0],
     })
-    out_of_bounds = t11.check_coordinate_bounds(substations)
+    cleaner = t11.SubstationsCleaner(df)
+    out_of_bounds = cleaner.check_coordinate_bounds()
     assert set(out_of_bounds["Substation ID"]) == {2, 3}
 
 
-def test_validate_relationships_detects_orphaned_source_and_utility():
+def test_impute_categoricals_fills_with_unknown_not_dropped():
+    df = pd.DataFrame({"Substation ID": [1, 2], "Region": ["Ashanti", None]})
+    cleaner = t11.SubstationsCleaner(df)
+    cleaner.impute_categoricals()
+    assert len(cleaner.df) == 2  # row survives
+    assert cleaner.df["Region"].iloc[1] == "Unknown"
+
+
+def test_clean_runs_full_pipeline_in_order():
+    """The clean() template method should standardise, coerce, drop missing
+    keys, and impute - end to end - for a single call."""
+    df = pd.DataFrame({
+        "Substation ID": [1, 2, None], "Name": ["A", "B", "C"],
+        "Region": ["Ashanti", "NULL", "Volta"], "Type": ["Distribution"] * 3,
+        "Status": ["Active"] * 3, "Country": ["Ghana"] * 3,
+        "Latitude": [6.0, 6.1, 6.2], "Longitude": [-1.0, -1.1, -1.2],
+        "Voltage (kV)": [11, 11, 11], "Capacity (MVA)": [10.0, 10.0, 10.0],
+        "Commissioning Year": [2000, 2000, 2000],
+    })
+    cleaner = t11.SubstationsCleaner(df)
+    cleaned = cleaner.clean()
+    assert len(cleaned) == 2  # the row with a missing Substation ID is dropped
+    assert cleaner.dropped_missing_key == 1
+    assert cleaned["Region"].iloc[1] == "Unknown"  # "NULL" -> NaN -> "Unknown"
+
+
+def test_relationship_validator_detects_orphaned_source_and_utility():
     utilities = pd.DataFrame({"Utility ID": [1, 2]})
     substations = pd.DataFrame({"Substation ID": [10, 20]})
     lines = pd.DataFrame({
@@ -84,30 +121,23 @@ def test_validate_relationships_detects_orphaned_source_and_utility():
         "Destination Substation ID": [20, 20, 20],
         "Utility ID": [1, 1, 5],                       # 5 doesn't exist
     })
-    result = t11.validate_relationships(utilities, substations, lines)
+    result = t11.RelationshipValidator(utilities, substations, lines).validate()
     assert result["orphaned_source_line_ids"] == [101]
     assert result["orphaned_destination_line_ids"] == []
     assert result["orphaned_utility_line_ids"] == [102]
 
 
-def test_validate_relationships_passes_for_consistent_data():
+def test_relationship_validator_passes_for_consistent_data():
     utilities = pd.DataFrame({"Utility ID": [1]})
     substations = pd.DataFrame({"Substation ID": [10, 20]})
     lines = pd.DataFrame({
         "Line ID": [100], "Source Substation ID": [10],
         "Destination Substation ID": [20], "Utility ID": [1],
     })
-    result = t11.validate_relationships(utilities, substations, lines)
+    result = t11.RelationshipValidator(utilities, substations, lines).validate()
     assert result["orphaned_source_line_ids"] == []
     assert result["orphaned_destination_line_ids"] == []
     assert result["orphaned_utility_line_ids"] == []
-
-
-def test_impute_categoricals_fills_with_unknown_not_dropped():
-    df = pd.DataFrame({"Region": ["Ashanti", None]})
-    result = t11.impute_categoricals(df, ["Region"])
-    assert len(result) == 2  # row survives
-    assert result["Region"].iloc[1] == "Unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -138,8 +168,8 @@ def test_cleaned_lines_have_no_dangling_foreign_keys(pipeline):
 
 def test_cleaned_substation_coordinates_within_bounds(pipeline):
     substations = pd.read_csv(os.path.join(pipeline["clean"], "substations_clean.csv"))
-    assert substations["Latitude"].between(*t11.LAT_BOUNDS).all()
-    assert substations["Longitude"].between(*t11.LON_BOUNDS).all()
+    assert substations["Latitude"].between(*t11.SubstationsCleaner.LAT_BOUNDS).all()
+    assert substations["Longitude"].between(*t11.SubstationsCleaner.LON_BOUNDS).all()
 
 
 def test_cleaned_csvs_have_no_missing_values(pipeline):
@@ -156,6 +186,15 @@ def test_report_documents_zero_issues_on_the_seeded_dataset(pipeline):
     assert "Duplicate Substation IDs:** none found" in content
     assert "orphaned Source Substation ID:** none found" in content
     assert "orphaned Utility ID:** none found" in content
+
+
+def test_pipeline_run_returns_a_cleaner_per_table(pipeline):
+    """DataCleaningPipeline.run() should hand back one cleaner instance per
+    table, each still carrying its recorded validation state."""
+    result = t11.DataCleaningPipeline().run()
+    assert set(result.keys()) == {"utilities", "substations", "lines"}
+    assert isinstance(result["substations"], t11.SubstationsCleaner)
+    assert result["substations"].dropped_missing_key == 0
 
 
 def test_rerunning_task_1_1_is_reproducible(pipeline, run_pipeline_script):
