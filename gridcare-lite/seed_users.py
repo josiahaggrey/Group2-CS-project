@@ -1,7 +1,6 @@
 """Create demo user accounts for GridCare-Lite (run once after db.py)."""
-import bcrypt
-
 from db import init_db
+from models import User
 
 DEMO_USERS = [
     ("admin1", "Admin123!", "admin"),
@@ -12,14 +11,9 @@ DEMO_USERS = [
 
 
 def seed(conn):
-    cur = conn.cursor()
     for username, password, role in DEMO_USERS:
-        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        cur.execute(
-            "INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            (username, password_hash, role),
-        )
-    conn.commit()
+        if User.find_by_username(conn, username) is None:
+            User.create(conn, username, password, role)
 
 
 if __name__ == "__main__":
