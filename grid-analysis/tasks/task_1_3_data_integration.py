@@ -26,9 +26,19 @@ Run from the grid-analysis/ directory after task_1_1_data_cleaning.py:
 """
 import json
 import os
+import sys
 from datetime import datetime
 
 import pandas as pd
+
+# Running "python tasks/task_1_3_data_integration.py" puts this file's own
+# directory on sys.path automatically, so `import report_utils` just works.
+# Some runners don't do that (e.g. a Jupyter/Interactive-Window kernel keeps
+# whatever directory it was launched from), which surfaces as "No module
+# named 'report_utils'" even though report_utils.py sits right next to this
+# file. Adding the directory explicitly makes the import work regardless of
+# how the script is launched.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from report_utils import dataframe_to_markdown_table, require_files
 
@@ -78,11 +88,6 @@ class DatasetIntegrator:
         self.master = None
 
     def build_master_dataset(self):
-        # add_prefix("Source ") turns "Substation ID" into "Source Substation
-        # ID", which already matches lines' merge-key column name - no rename
-        # needed. utilities.csv already has a column literally called
-        # "Utility ID", so add_prefix("Utility ") turns it into "Utility
-        # Utility ID" and *that* one does need renaming back.
         substation_source = self.substations.add_prefix("Source ")
         substation_dest = self.substations.add_prefix("Destination ")
         utility_prefixed = self.utilities.add_prefix("Utility ").rename(
@@ -152,14 +157,6 @@ class LookupBuilder:
 
     @staticmethod
     def _build(df, key_column, rename_map):
-        # DataFrame.to_dict() has documented, version-stable native-Python-
-        # type conversion (int/float/str, not numpy.int64/float64). Iterating
-        # rows with .iterrows() instead would leave that conversion to
-        # pandas' internal object-array construction, which is an
-        # implementation detail rather than a documented guarantee - and
-        # numpy.int64 isn't natively JSON-serialisable, so relying on it
-        # risks a lookup that silently serialises numbers as strings on a
-        # different pandas version.
         lookup_df = df.set_index(key_column)[list(rename_map.keys())].rename(columns=rename_map)
         lookup_df.index = lookup_df.index.astype(int)
         return lookup_df.to_dict(orient="index")

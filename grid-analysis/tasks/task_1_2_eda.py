@@ -23,12 +23,22 @@ Run from the grid-analysis/ directory after task_1_1_data_cleaning.py:
     python tasks/task_1_2_eda.py
 """
 import os
+import sys
 from datetime import datetime
 
 import matplotlib
 matplotlib.use("Agg")  # headless-safe backend - no display required to save PNGs
 import matplotlib.pyplot as plt
 import pandas as pd
+
+# Running "python tasks/task_1_2_eda.py" puts this file's own directory on
+# sys.path automatically, so `import report_utils` just works. Some runners
+# don't do that (e.g. a Jupyter/Interactive-Window kernel keeps whatever
+# directory it was launched from), which surfaces as "No module named
+# 'report_utils'" even though report_utils.py sits right next to this file.
+# Adding the directory explicitly makes the import work regardless of how
+# the script is launched.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from report_utils import dataframe_to_markdown_table, require_files
 
