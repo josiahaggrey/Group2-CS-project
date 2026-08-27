@@ -27,15 +27,19 @@ See each component's README for how to run it.
 
 ## Team
 
-Four-member team split across the components — see the course project spec for the
-suggested role breakdown (data engineer, data analyst, visualisation specialist,
-software engineer) and grading rubric. Update this section with your team's actual
-member names and role assignments.
+Four GitHub collaborators on this repo. Role split below is proposed from the
+course spec's suggested breakdown (data engineer, data analyst, visualisation
+specialist, software engineer) — confirm/reassign with the team and replace
+the `_proposed_` tags once agreed.
 
-- Member 1: _Data engineering / network analysis / GridCare-Lite architecture_
-- Member 2: _Data analysis / business intelligence / ClinicCare-Lite patient services_
-- Member 3: _Visualisation / dashboards / ClinicCare-Lite clinician services_
-- Member 4: _Software engineering / GridCare-Lite GUI / ClinicCare-Lite UI & testing_
+- [@josiahaggrey](https://github.com/josiahaggrey) — _proposed: Data analysis / business intelligence / ClinicCare-Lite patient services_
+- [@braimahhariz](https://github.com/braimahhariz) — _proposed: Data engineering / network analysis / GridCare-Lite architecture_ (author of `grid-analysis` Tasks 1.1-1.3 and the current `gridcare-lite` implementation)
+- [@CoulNibo](https://github.com/CoulNibo) — _proposed: Visualisation / dashboards / ClinicCare-Lite clinician services_
+- [@Cl-Mado](https://github.com/Cl-Mado) — _proposed: Software engineering / GridCare-Lite GUI / ClinicCare-Lite UI & testing_
+
+See [docs/architecture.md](docs/architecture.md) for how the three components
+fit together and [docs/coding_standards.md](docs/coding_standards.md) for the
+conventions to follow.
 
 ## Project boundaries
 
