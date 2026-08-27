@@ -20,11 +20,39 @@ Role separation is enforced both in the GUI (which screens/buttons are
 shown) and in application logic (e.g. a technician only ever sees their
 own work orders via WorkOrder.for_technician()).
 """
+import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from db import init_db
 from models import Complaint, Outage, Substation, User, WorkOrder
+
+# Computed from this file's own location, not the current working directory -
+# `python app.py` and `python gridcare-lite/app.py` must both find it.
+DEFAULT_SUBSTATIONS_CSV = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "grid-analysis", "data", "cleaned", "substations_clean.csv",
+)
+
+
+def ensure_substations_loaded(conn, csv_path=DEFAULT_SUBSTATIONS_CSV):
+    """Auto-import grid-analysis's cleaned substation list on first run.
+
+    Previously a manual step (see git history for the snippet this replaces)
+    - a fresh clone opened straight to an empty substation picker. Runs once:
+    skips the import if the table already has rows, and skips it quietly
+    (rather than crashing the GUI) if the grid-analysis component hasn't
+    been cloned/generated alongside gridcare-lite.
+    """
+    if Substation.all(conn):
+        return
+    if not os.path.exists(csv_path):
+        print(f"No substation reference data imported - {csv_path} not found. "
+              f"Outages can still be logged, but the substation picker will be empty "
+              f"until you run Substation.import_from_csv(conn, <path>).")
+        return
+    count = Substation.import_from_csv(conn, csv_path)
+    print(f"Imported {count} substations from {csv_path}")
 
 
 class LoginWindow(tk.Frame):
@@ -313,6 +341,7 @@ class ComplaintForm(tk.Frame):
 
 def main():
     conn = init_db()
+    ensure_substations_loaded(conn)
     root = tk.Tk()
 
     def show_dashboard(user):
