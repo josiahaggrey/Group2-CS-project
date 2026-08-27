@@ -66,6 +66,12 @@ def configure_style(root):
     style.configure("CardSubtitle.TLabel", background=COLOR_SURFACE, foreground=COLOR_TEXT_DIM,
                      font=FONT_SUBTITLE)
     style.configure("CardError.TLabel", background=COLOR_SURFACE, foreground="#b3261e", font=FONT_SMALL)
+    style.configure("StatNumber.TLabel", background=COLOR_SURFACE, foreground=COLOR_TEXT,
+                     font=(FONT_FAMILY, 22, "bold"))
+    style.configure("StatLabel.TLabel", background=COLOR_SURFACE, foreground=COLOR_TEXT_FAINT,
+                     font=(FONT_FAMILY, 9))
+    style.configure("CardHeading.TLabel", background=COLOR_SURFACE, foreground=COLOR_TEXT,
+                     font=(FONT_FAMILY, 11, "bold"))
 
     style.configure("Header.TLabel", background=COLOR_HEADER_BG, foreground=COLOR_HEADER_TEXT,
                      font=FONT_HEADER_META)
@@ -121,6 +127,45 @@ def configure_style(root):
     style.layout("Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
 
     return style
+
+
+def draw_horizontal_bars(canvas, data, width, color=COLOR_ACCENT):
+    """Draw a simple horizontal bar chart onto an empty tk.Canvas - no
+    matplotlib dependency needed for the Reports screen's "simple charts".
+
+    `data` is a list of (label, count) tuples, already sorted by the
+    caller; `width` is the canvas's configured width in pixels (read once
+    by the caller rather than via winfo_width(), which is unreliable
+    before the widget has been laid out).
+    """
+    canvas.delete("all")
+    if not data:
+        canvas.create_text(6, 14, anchor="w", text="No data yet.",
+                            fill=COLOR_TEXT_FAINT, font=FONT_SMALL)
+        canvas.configure(height=28)
+        return
+
+    row_h = 26
+    label_w = 128
+    gap = 8
+    bar_max_w = max(width - label_w - 46, 40)
+    max_count = max(count for _, count in data) or 1
+
+    for index, (label, count) in enumerate(data):
+        y = index * row_h + gap
+        canvas.create_text(2, y + 8, anchor="w", text=str(label),
+                            fill=COLOR_TEXT, font=FONT_SMALL, width=label_w - 6)
+        track_x0 = label_w
+        canvas.create_rectangle(track_x0, y, track_x0 + bar_max_w, y + 16,
+                                 fill=COLOR_SURFACE_ALT, outline=COLOR_BORDER)
+        bar_w = max(int((count / max_count) * bar_max_w), 2) if count else 0
+        if bar_w:
+            canvas.create_rectangle(track_x0, y, track_x0 + bar_w, y + 16,
+                                     fill=color, outline="")
+        canvas.create_text(track_x0 + bar_max_w + 8, y + 8, anchor="w", text=str(count),
+                            fill=COLOR_TEXT_DIM, font=FONT_SMALL)
+
+    canvas.configure(height=len(data) * row_h + gap)
 
 
 def style_text_widget(widget):

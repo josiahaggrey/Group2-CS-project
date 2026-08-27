@@ -29,6 +29,7 @@ erDiagram
         int substation_id FK
         int reported_by FK "-> users.user_id"
         string description
+        string severity "Low / Medium / High / Critical"
         string status "Open / In Progress / Resolved"
         string reported_at
         string resolved_at
@@ -54,10 +55,18 @@ erDiagram
 
 ## Notes
 
-- SQLite's `CHECK` constraints on `role`/`status` columns enforce the
-  enumerations shown above at the database layer, not just in Python
+- SQLite's `CHECK` constraints on `role`/`status`/`severity` columns enforce
+  the enumerations shown above at the database layer, not just in Python
   (`db.py`) — a direct `INSERT`/`UPDATE` outside `models.py` would still be
-  rejected for an invalid role or status.
+  rejected for an invalid role, status, or severity.
+- `severity` was added after the table already existed in some developers'
+  local `gridcare.db` files; `db.py: _add_column_if_missing()` migrates an
+  existing database in place (`ALTER TABLE ... ADD COLUMN`) rather than
+  requiring a fresh database.
+- `Outage.report()` also enforces two rules the schema alone can't: the
+  referenced `substation_id` must exist, and there must not already be an
+  open (`Open`/`In Progress`) outage with the exact same description at
+  the same substation.
 - `work_orders.outage_id` is not declared `UNIQUE` in the schema, so the
   "one outage, at most one active work order" rule shown as `||--o|` above
   is an application-level convention (`WorkOrder.assign` is only ever called

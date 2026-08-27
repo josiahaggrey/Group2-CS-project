@@ -24,6 +24,8 @@ classDiagram
         +str name
         +str region
         +all(conn)$ list~Substation~
+        +regions(conn)$ list~str~
+        +exists(conn, substation_id)$ bool
         +import_from_csv(conn, csv_path)$ int
     }
 
@@ -32,11 +34,13 @@ classDiagram
         +int substation_id
         +int reported_by
         +str description
+        +str severity
         +str status
         +str reported_at
         +str resolved_at
-        +report(conn, substation_id, reported_by, description)$ Outage
+        +report(conn, substation_id, reported_by, description, severity)$ Outage
         +all(conn)$ list~Outage~
+        +search(conn, region, status)$ list~Outage~
         +open_outages(conn)$ list~Outage~
         +mark_in_progress(conn)
         +mark_resolved(conn)
@@ -61,6 +65,15 @@ classDiagram
         +str description
         +str logged_at
         +log(conn, logged_by, customer_name, description, outage_id)$ Complaint
+        +all(conn)$ list~Complaint~
+    }
+
+    class Report {
+        +status_counts(conn)$ dict
+        +severity_counts(conn)$ dict
+        +outages_by_region(conn)$ list~tuple~
+        +average_resolution_hours(conn)$ float
+        +summary(conn)$ dict
     }
 
     User "1" --> "0..*" Outage : reports (reported_by)
@@ -69,6 +82,8 @@ classDiagram
     Substation "1" --> "0..*" Outage : location of
     Outage "1" --> "0..1" WorkOrder : resolved via
     Outage "1" --> "0..*" Complaint : optionally linked to
+    Report ..> Outage : reads
+    Report ..> Complaint : reads
 ```
 
 ## Notes
@@ -84,3 +99,12 @@ classDiagram
 - **`Substation` is intentionally minimal** — it's a local reference copy of
   `grid-analysis`'s cleaned data, not the canonical source. See
   `import_from_csv()` and the root architecture doc.
+- **`Outage.report()` validates two things the schema can't enforce alone:**
+  the substation must exist (`Substation.exists()`), and there must not
+  already be an open outage with the exact same description at that
+  substation - both raise `ValueError` rather than silently succeeding.
+- **`Report` is read-only** — it never appears on the left side of an
+  association above; every method only issues `SELECT`s over data the
+  other classes already wrote. Kept separate from `Outage`/`Complaint`
+  rather than added as more classmethods on them, since aggregating across
+  the whole table is a different responsibility from managing one row.

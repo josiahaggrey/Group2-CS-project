@@ -2,11 +2,12 @@
 GridCare-Lite: a Tkinter/SQLite outage and maintenance management system.
 
 The GUI never writes raw SQL - every screen calls a method on a domain
-class from models.py (User, Substation, Outage, WorkOrder, Complaint).
-Screens are responsible for layout and input handling only; all business
-rules (validation, status transitions, what counts as "resolved") live in
-the model classes so they're the same regardless of which screen calls them.
-Visual styling lives in theme.py, applied once via configure_style().
+class from models.py (User, Substation, Outage, WorkOrder, Complaint,
+Report). Screens are responsible for layout and input handling only; all
+business rules (validation, status transitions, what counts as "resolved")
+live in the model classes so they're the same regardless of which screen
+calls them. Visual styling lives in theme.py, applied once via
+configure_style().
 
 Run `python db.py` (or just run this file, which calls init_db() itself) then
 `python seed_users.py` to create demo accounts, then `python app.py`.
@@ -20,19 +21,27 @@ Demo accounts (see seed_users.py):
 Role separation is enforced both in the GUI (which screens/buttons are
 shown) and in application logic (e.g. a technician only ever sees their
 own work orders via WorkOrder.for_technician()).
+
+Every screen's DB-touching command is wrapped with @guard_db_errors, so a
+locked/unreachable gridcare.db shows one error dialog instead of crashing
+the whole application.
 """
+import functools
 import os
+import sqlite3
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from db import init_db
-from models import Complaint, Outage, Substation, User, WorkOrder
+from models import Complaint, Outage, Report, Substation, User, WorkOrder
 from theme import (
+    COLOR_ACCENT,
     COLOR_BG,
     COLOR_BORDER,
     COLOR_HEADER_BG,
     COLOR_SURFACE,
     configure_style,
+    draw_horizontal_bars,
     style_text_widget,
 )
 
@@ -49,6 +58,27 @@ ROLE_LABELS = {
     "technician": "Technician",
     "customer_service": "Customer Service",
 }
+
+ALL_REGIONS = "All Regions"
+ALL_STATUSES = "All Statuses"
+
+
+def guard_db_errors(func):
+    """Wrap a screen method so an sqlite3.Error (locked file, unreachable
+    db, etc.) shows one friendly dialog instead of crashing the app. Applied
+    to every method that touches self.conn - see the module docstring."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except sqlite3.Error as error:
+            messagebox.showerror(
+                "Database Error",
+                f"Couldn't complete that action - the database is unavailable "
+                f"({error}). Check that gridcare.db isn't open/locked elsewhere "
+                f"and try again.")
+            return None
+    return wrapper
 
 
 def ensure_substations_loaded(conn, csv_path=DEFAULT_SUBSTATIONS_CSV):
@@ -77,6 +107,17 @@ def _card(master):
     no simple per-widget border colour for TFrame."""
     return tk.Frame(master, bg=COLOR_SURFACE, highlightbackground=COLOR_BORDER,
                      highlightthickness=1, bd=0)
+
+
+def _tree_wrap(master):
+    wrap = tk.Frame(master, bg=COLOR_SURFACE, highlightbackground=COLOR_BORDER,
+                     highlightthickness=1, bd=0)
+    return wrap
+
+
+def _striped(tree):
+    tree.tag_configure("odd", background="#f7f8fa")
+    tree.tag_configure("even", background=COLOR_SURFACE)
 
 
 class LoginWindow(tk.Frame):
@@ -117,6 +158,7 @@ class LoginWindow(tk.Frame):
         self.username_entry.focus_set()
         master.bind("<Return>", lambda event: self.attempt_login())
 
+    @guard_db_errors
     def attempt_login(self):
         username = self.username_entry.get().strip()
         password = self.password_entry.get()
@@ -178,25 +220,43 @@ class OutageDashboard(tk.Frame):
         body = ttk.Frame(self, padding=(24, 20))
         body.pack(fill="both", expand=True)
 
-        ttk.Label(body, text="Reported Outages", style="SectionTitle.TLabel").pack(
-            anchor="w", pady=(0, 10))
+        title_row = ttk.Frame(body)
+        title_row.pack(fill="x", pady=(0, 10))
+        ttk.Label(title_row, text="Reported Outages", style="SectionTitle.TLabel").pack(side="left")
 
-        tree_wrap = tk.Frame(body, bg=COLOR_SURFACE, highlightbackground=COLOR_BORDER,
-                              highlightthickness=1, bd=0)
+        filters = ttk.Frame(title_row)
+        filters.pack(side="right")
+        ttk.Label(filters, text="Region", style="Dim.TLabel").pack(side="left", padx=(0, 4))
+        self.region_var = tk.StringVar(value=ALL_REGIONS)
+        region_values = [ALL_REGIONS] + Substation.regions(conn)
+        region_combo = ttk.Combobox(filters, textvariable=self.region_var, values=region_values,
+                                     state="readonly", width=16)
+        region_combo.pack(side="left", padx=(0, 12))
+        region_combo.bind("<<ComboboxSelected>>", lambda e: self.load_outages())
+
+        ttk.Label(filters, text="Status", style="Dim.TLabel").pack(side="left", padx=(0, 4))
+        self.status_var = tk.StringVar(value=ALL_STATUSES)
+        status_values = [ALL_STATUSES] + list(Outage.VALID_STATUSES)
+        status_combo = ttk.Combobox(filters, textvariable=self.status_var, values=status_values,
+                                     state="readonly", width=14)
+        status_combo.pack(side="left")
+        status_combo.bind("<<ComboboxSelected>>", lambda e: self.load_outages())
+
+        tree_wrap = _tree_wrap(body)
         tree_wrap.pack(fill="both", expand=True)
 
-        columns = ("outage_id", "substation", "description", "status", "reported_at")
-        headings = ("ID", "Substation", "Description", "Status", "Reported At")
+        columns = ("outage_id", "substation", "severity", "description", "status", "reported_at")
+        headings = ("ID", "Substation", "Severity", "Description", "Status", "Reported At")
         self.tree = ttk.Treeview(tree_wrap, columns=columns, show="headings", height=12)
         for col, heading in zip(columns, headings):
             self.tree.heading(col, text=heading)
-        self.tree.column("outage_id", width=50, anchor="center")
-        self.tree.column("substation", width=150)
-        self.tree.column("description", width=260)
+        self.tree.column("outage_id", width=44, anchor="center")
+        self.tree.column("substation", width=140)
+        self.tree.column("severity", width=80, anchor="center")
+        self.tree.column("description", width=220)
         self.tree.column("status", width=100, anchor="center")
         self.tree.column("reported_at", width=140)
-        self.tree.tag_configure("odd", background="#f7f8fa")
-        self.tree.tag_configure("even", background=COLOR_SURFACE)
+        _striped(self.tree)
         self.tree.pack(fill="both", expand=True, padx=1, pady=1)
 
         button_bar = ttk.Frame(body)
@@ -215,17 +275,29 @@ class OutageDashboard(tk.Frame):
         if user.role == "customer_service":
             ttk.Button(button_bar, text="Log Complaint", style="Primary.TButton",
                        command=self.open_complaint_form).pack(side="left", padx=(10, 0))
+        if user.role in ("customer_service", "admin"):
+            ttk.Button(button_bar, text="View Complaints",
+                       command=self.open_complaints_view).pack(side="left", padx=(10, 0))
+        if user.role == "admin":
+            ttk.Button(button_bar, text="Reports",
+                       command=self.open_reports).pack(side="left", padx=(10, 0))
 
         self.pack(fill="both", expand=True)
         self.load_outages()
 
+    @guard_db_errors
     def load_outages(self):
+        region = self.region_var.get()
+        status = self.status_var.get()
+        region = None if region == ALL_REGIONS else region
+        status = None if status == ALL_STATUSES else status
+
         for row in self.tree.get_children():
             self.tree.delete(row)
-        for index, outage in enumerate(Outage.all(self.conn)):
+        for index, outage in enumerate(Outage.search(self.conn, region=region, status=status)):
             tag = "odd" if index % 2 else "even"
             self.tree.insert("", "end", values=(
-                outage.outage_id, outage.substation_name, outage.description,
+                outage.outage_id, outage.substation_name, outage.severity, outage.description,
                 outage.status, outage.reported_at,
             ), tags=(tag,))
 
@@ -240,6 +312,12 @@ class OutageDashboard(tk.Frame):
 
     def open_complaint_form(self):
         ComplaintForm(tk.Toplevel(self.master), self.conn, self.user)
+
+    def open_complaints_view(self):
+        ComplaintsListView(tk.Toplevel(self.master), self.conn, self.user)
+
+    def open_reports(self):
+        ReportsScreen(tk.Toplevel(self.master), self.conn, self.user)
 
     def _logout(self):
         self.destroy()
@@ -291,12 +369,19 @@ class NewOutageForm(FormWindow):
         self._load_substations()
         self.substation_combo.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(0, 14))
 
-        self._field_label(3, "Description")
+        self._field_label(3, "Severity")
+        self.severity_var = tk.StringVar(value="Medium")
+        severity_combo = ttk.Combobox(self.inner, textvariable=self.severity_var,
+                                       values=list(Outage.VALID_SEVERITIES),
+                                       state="readonly", width=34)
+        severity_combo.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 14))
+
+        self._field_label(5, "Description")
         self.description_text = tk.Text(self.inner, width=34, height=5)
         style_text_widget(self.description_text)
-        self.description_text.grid(row=4, column=0, columnspan=2, sticky="ew")
+        self.description_text.grid(row=6, column=0, columnspan=2, sticky="ew")
 
-        self._submit_button(5, "Submit", self.submit)
+        self._submit_button(7, "Submit", self.submit)
 
     def _load_substations(self):
         self.substations = Substation.all(self.conn)
@@ -304,6 +389,7 @@ class NewOutageForm(FormWindow):
         if self.substations:
             self.substation_combo.current(0)
 
+    @guard_db_errors
     def submit(self):
         if not self.substations:
             messagebox.showerror(
@@ -312,9 +398,11 @@ class NewOutageForm(FormWindow):
             return
         substation = self.substations[self.substation_combo.current()]
         description = self.description_text.get("1.0", "end").strip()
+        severity = self.severity_var.get()
 
         try:
-            Outage.report(self.conn, substation.substation_id, self.user.user_id, description)
+            Outage.report(self.conn, substation.substation_id, self.user.user_id, description,
+                          severity=severity)
         except ValueError as error:
             messagebox.showerror("Validation Error", str(error))
             return
@@ -364,6 +452,7 @@ class WorkOrderForm(FormWindow):
         if self.technicians:
             self.tech_combo.current(0)
 
+    @guard_db_errors
     def submit(self):
         if not self.outages:
             messagebox.showerror("No Open Outages", "There are no open outages to assign.")
@@ -400,8 +489,7 @@ class TechnicianView(tk.Frame):
         body = ttk.Frame(self, padding=(20, 18))
         body.pack(fill="both", expand=True)
 
-        tree_wrap = tk.Frame(body, bg=COLOR_SURFACE, highlightbackground=COLOR_BORDER,
-                              highlightthickness=1, bd=0)
+        tree_wrap = _tree_wrap(body)
         tree_wrap.pack(fill="both", expand=True)
 
         columns = ("work_order_id", "outage_description", "scheduled_date", "status")
@@ -413,8 +501,7 @@ class TechnicianView(tk.Frame):
         self.tree.column("outage_description", width=260)
         self.tree.column("scheduled_date", width=110, anchor="center")
         self.tree.column("status", width=100, anchor="center")
-        self.tree.tag_configure("odd", background="#f7f8fa")
-        self.tree.tag_configure("even", background=COLOR_SURFACE)
+        _striped(self.tree)
         self.tree.pack(fill="both", expand=True, padx=1, pady=1)
 
         ttk.Button(body, text="Mark Selected Complete", style="Primary.TButton",
@@ -423,6 +510,7 @@ class TechnicianView(tk.Frame):
         self.pack(fill="both", expand=True)
         self.load_work_orders()
 
+    @guard_db_errors
     def load_work_orders(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -433,6 +521,7 @@ class TechnicianView(tk.Frame):
                 wo.work_order_id, wo.outage_description, wo.scheduled_date, wo.status,
             ), tags=(tag,))
 
+    @guard_db_errors
     def mark_complete(self):
         selected = self.tree.selection()
         if not selected:
@@ -465,6 +554,7 @@ class ComplaintForm(FormWindow):
 
         self._submit_button(7, "Submit", self.submit)
 
+    @guard_db_errors
     def submit(self):
         name = self.name_entry.get().strip()
         description = self.description_text.get("1.0", "end").strip()
@@ -487,14 +577,144 @@ class ComplaintForm(FormWindow):
         self.master.destroy()
 
 
+class ComplaintsListView(tk.Frame):
+    """Read-only complaint history for customer-service and admin - closes
+    the "log it but can never see it again" gap in the original screen list."""
+
+    def __init__(self, master, conn, user):
+        super().__init__(master, bg=COLOR_BG)
+        self.conn = conn
+        master.title("Customer Complaints")
+        master.configure(bg=COLOR_BG)
+
+        Header(self, "Customer Complaints", user=user)
+
+        body = ttk.Frame(self, padding=(20, 18))
+        body.pack(fill="both", expand=True)
+
+        tree_wrap = _tree_wrap(body)
+        tree_wrap.pack(fill="both", expand=True)
+
+        columns = ("complaint_id", "customer_name", "outage_id", "description", "logged_by", "logged_at")
+        headings = ("ID", "Customer", "Outage", "Description", "Logged By", "Logged At")
+        self.tree = ttk.Treeview(tree_wrap, columns=columns, show="headings", height=12)
+        for col, heading in zip(columns, headings):
+            self.tree.heading(col, text=heading)
+        self.tree.column("complaint_id", width=44, anchor="center")
+        self.tree.column("customer_name", width=130)
+        self.tree.column("outage_id", width=70, anchor="center")
+        self.tree.column("description", width=260)
+        self.tree.column("logged_by", width=100)
+        self.tree.column("logged_at", width=140)
+        _striped(self.tree)
+        self.tree.pack(fill="both", expand=True, padx=1, pady=1)
+
+        ttk.Button(body, text="Refresh", command=self.load_complaints).pack(anchor="w", pady=(14, 0))
+
+        self.pack(fill="both", expand=True)
+        self.load_complaints()
+
+    @guard_db_errors
+    def load_complaints(self):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+        complaints = Complaint.all(self.conn)
+        if not complaints:
+            self.tree.insert("", "end", values=("", "No complaints logged yet.", "", "", "", ""))
+            return
+        for index, complaint in enumerate(complaints):
+            tag = "odd" if index % 2 else "even"
+            self.tree.insert("", "end", values=(
+                complaint.complaint_id, complaint.customer_name,
+                complaint.outage_id if complaint.outage_id else "-",
+                complaint.description, complaint.logged_by_username or "-", complaint.logged_at,
+            ), tags=(tag,))
+
+
+class ReportsScreen(tk.Frame):
+    """Operational summary: status/severity counts, average resolution
+    time, and outages-by-region - the "basic reporting" core feature."""
+
+    def __init__(self, master, conn, user):
+        super().__init__(master, bg=COLOR_BG)
+        self.conn = conn
+        master.title("Operational Reports")
+        master.configure(bg=COLOR_BG)
+        master.geometry("640x640")
+
+        Header(self, "Operational Reports", user=user)
+
+        self.body = ttk.Frame(self, padding=(24, 20))
+        self.body.pack(fill="both", expand=True)
+
+        self.stat_row = ttk.Frame(self.body)
+        self.stat_row.pack(fill="x")
+
+        region_card = _card(self.body)
+        region_card.pack(fill="x", pady=(20, 0))
+        region_inner = ttk.Frame(region_card, style="Surface.TFrame", padding=(16, 14))
+        region_inner.pack(fill="x")
+        ttk.Label(region_inner, text="Outages by Region", style="CardHeading.TLabel").pack(anchor="w")
+        self.region_canvas = tk.Canvas(region_inner, width=520, height=28, bg=COLOR_SURFACE,
+                                        highlightthickness=0)
+        self.region_canvas.pack(fill="x", pady=(10, 0))
+
+        severity_card = _card(self.body)
+        severity_card.pack(fill="x", pady=(14, 0))
+        severity_inner = ttk.Frame(severity_card, style="Surface.TFrame", padding=(16, 14))
+        severity_inner.pack(fill="x")
+        ttk.Label(severity_inner, text="Outages by Severity", style="CardHeading.TLabel").pack(anchor="w")
+        self.severity_canvas = tk.Canvas(severity_inner, width=520, height=28, bg=COLOR_SURFACE,
+                                          highlightthickness=0)
+        self.severity_canvas.pack(fill="x", pady=(10, 0))
+
+        ttk.Button(self.body, text="Refresh", command=self.load_report).pack(anchor="w", pady=(16, 0))
+
+        self.pack(fill="both", expand=True)
+        self.load_report()
+
+    def _stat_card(self, parent, value, label):
+        card = _card(parent)
+        inner = ttk.Frame(card, style="Surface.TFrame", padding=(14, 12))
+        inner.pack()
+        ttk.Label(inner, text=str(value), style="StatNumber.TLabel").pack(anchor="w")
+        ttk.Label(inner, text=label, style="StatLabel.TLabel").pack(anchor="w")
+        return card
+
+    @guard_db_errors
+    def load_report(self):
+        for widget in self.stat_row.winfo_children():
+            widget.destroy()
+
+        summary = Report.summary(self.conn)
+        status_counts = summary["status_counts"]
+        avg_hours = summary["avg_resolution_hours"]
+        avg_display = f"{avg_hours}h" if avg_hours is not None else "-"
+
+        stats = [
+            (summary["total_outages"], "Total Outages"),
+            (status_counts.get("Open", 0), "Open"),
+            (status_counts.get("In Progress", 0), "In Progress"),
+            (status_counts.get("Resolved", 0), "Resolved"),
+            (avg_display, "Avg. Resolution"),
+            (summary["total_complaints"], "Complaints"),
+        ]
+        for value, label in stats:
+            self._stat_card(self.stat_row, value, label).pack(side="left", padx=(0, 10))
+
+        draw_horizontal_bars(self.region_canvas, summary["by_region"], width=520, color=COLOR_ACCENT)
+        severity_data = [(sev, count) for sev, count in summary["severity_counts"].items()]
+        draw_horizontal_bars(self.severity_canvas, severity_data, width=520, color=COLOR_ACCENT)
+
+
 def main():
     conn = init_db()
     ensure_substations_loaded(conn)
 
     root = tk.Tk()
     root.title("GridCare-Lite")
-    root.geometry("900x600")
-    root.minsize(760, 520)
+    root.geometry("960x640")
+    root.minsize(800, 560)
     configure_style(root)
 
     def show_login():
