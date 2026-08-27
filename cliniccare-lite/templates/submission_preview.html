@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Submission Preview{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('clinician_dashboard') }}">&larr; Back to Dashboard</a></p>
+<h1>Submission: {{ task.title if task else submission.task_id }}</h1>
+<p class="dim">Patient {{ submission.patient_id }} · submitted {{ submission.timestamp }}</p>
+
+<section class="card">
+  {% if rows is not none %}
+    <div class="table-scroll">
+      <table>
+        {% for row in rows %}
+          {% if loop.first %}
+            <thead><tr>{% for cell in row %}<th>{{ cell }}</th>{% endfor %}</tr></thead>
+            <tbody>
+          {% else %}
+            <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+          {% endif %}
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif text is not none %}
+    <pre class="text-preview">{{ text }}</pre>
+  {% else %}
+    <p>This file type can't be previewed inline - download it to review offline.</p>
+  {% endif %}
+  <p><a href="{{ url_for('download_submission_file', key=key) }}">Download original file</a></p>
+</section>
+{% endblock %}

@@ -4,7 +4,8 @@ from utils.json_store import load_json, save_json
 
 class HealthTask:
     def __init__(self, task_id, title, description, due_date, clinic_id,
-                 assigned_patient_id, created_by):
+                 assigned_patient_id, created_by, attachment_path=None,
+                 attachment_original_name=None):
         self.task_id = task_id
         self.title = title
         self.description = description
@@ -12,6 +13,8 @@ class HealthTask:
         self.clinic_id = clinic_id
         self.assigned_patient_id = assigned_patient_id
         self.created_by = created_by
+        self.attachment_path = attachment_path
+        self.attachment_original_name = attachment_original_name
 
     def save(self):
         data = load_json(HEALTH_TASKS_FILE)
@@ -22,6 +25,8 @@ class HealthTask:
             "clinic_id": self.clinic_id,
             "assigned_patient_id": self.assigned_patient_id,
             "created_by": self.created_by,
+            "attachment_path": self.attachment_path,
+            "attachment_original_name": self.attachment_original_name,
         }
         save_json(HEALTH_TASKS_FILE, data)
 

@@ -2,11 +2,42 @@
 {% block title %}My Engagement{% endblock %}
 {% block content %}
 <h1>My Private Engagement</h1>
+<p class="dim">Visible only to you - never compared with other patients.</p>
+
+<section class="card stat-grid">
+  <div class="stat-tile">
+    <div class="stat-number">{{ engagement_points }}</div>
+    <div class="stat-label">Engagement Points</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-number">{{ trend.total_submissions }}</div>
+    <div class="stat-label">Total Submissions</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-number">{{ trend.appointments_attended }}</div>
+    <div class="stat-label">Appointments Attended</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-number">{{ trend.appointments_missed }}</div>
+    <div class="stat-label">Appointments Missed</div>
+  </div>
+</section>
+
 <section class="card">
-  <p>Engagement Points: <strong>{{ engagement_points }}</strong></p>
-  <p>
-    You earn a point each time you submit a health task on or before its due date.
-    This history is private to you and is never compared with other patients.
-  </p>
+  <h2>Submissions Over Time</h2>
+  {% if trend.submissions_by_month %}
+    {% set max_val = trend.submissions_by_month.values()|list|max %}
+    <div class="bar-chart">
+      {% for month, count in trend.submissions_by_month.items() %}
+        <div class="bar-row">
+          <span class="bar-label">{{ month }}</span>
+          <span class="bar-track"><span class="bar-fill" style="width: {{ (count / max_val * 100)|round(1) }}%"></span></span>
+          <span class="bar-value">{{ count }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="dim">No submissions yet - your history will build up here over time.</p>
+  {% endif %}
 </section>
 {% endblock %}

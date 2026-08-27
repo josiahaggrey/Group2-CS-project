@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<h1>Operational Analytics</h1>
+<p class="dim">Aggregate operational counts for your clinic only - never a single
+   patient's clinical data, and never compared patient-to-patient.</p>
+
+<section class="card stat-grid">
+  <div class="stat-tile">
+    <div class="stat-number">{{ summary.task_completion_rate if summary.task_completion_rate is not none else '-' }}{{ '%' if summary.task_completion_rate is not none else '' }}</div>
+    <div class="stat-label">Task Completion Rate</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-number">{{ summary.pending_review_count }}</div>
+    <div class="stat-label">Pending Reviews</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-number">{{ summary.average_review_turnaround_hours if summary.average_review_turnaround_hours is not none else '-' }}{{ 'h' if summary.average_review_turnaround_hours is not none else '' }}</div>
+    <div class="stat-label">Avg. Review Turnaround</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-number">{{ summary.appointment_no_show_rate if summary.appointment_no_show_rate is not none else '-' }}{{ '%' if summary.appointment_no_show_rate is not none else '' }}</div>
+    <div class="stat-label">Appointment No-Show Rate</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Monthly Task Volume</h2>
+  {% if summary.monthly_task_volume %}
+    {% set max_val = summary.monthly_task_volume.values()|list|max %}
+    <div class="bar-chart">
+      {% for month, count in summary.monthly_task_volume.items() %}
+        <div class="bar-row">
+          <span class="bar-label">{{ month }}</span>
+          <span class="bar-track"><span class="bar-fill" style="width: {{ (count / max_val * 100)|round(1) }}%"></span></span>
+          <span class="bar-value">{{ count }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="dim">No tasks yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Submissions by Review Outcome</h2>
+  {% set counts = summary.submission_status_breakdown.values()|list %}
+  {% if counts and counts|max > 0 %}
+    {% set max_val = counts|max %}
+    <div class="bar-chart">
+      {% for outcome, count in summary.submission_status_breakdown.items() %}
+        <div class="bar-row">
+          <span class="bar-label">{{ outcome }}</span>
+          <span class="bar-track"><span class="bar-fill" style="width: {{ (count / max_val * 100)|round(1) }}%"></span></span>
+          <span class="bar-value">{{ count }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="dim">No submissions yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

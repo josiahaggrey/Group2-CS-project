@@ -8,10 +8,11 @@ from utils.json_store import load_json, save_json
 
 
 class TaskSubmission:
-    def __init__(self, patient_id, task_id, source_file_path):
+    def __init__(self, patient_id, task_id, source_file_path, clinic_id="clinic-001"):
         self.patient_id = patient_id
         self.task_id = task_id
         self.source_file_path = source_file_path
+        self.clinic_id = clinic_id
         self.file_path = None
         self.timestamp = datetime.now().isoformat()
         self.review_status = "Pending"
@@ -30,10 +31,11 @@ class TaskSubmission:
         ok, error = self.validate_file()
         if not ok:
             raise ValueError(error)
-        # patient_id and task_id are both validated upstream (8-digit patient ID,
-        # existing task key), so they're safe to use directly in a filesystem path.
+        # clinic_id, patient_id, and task_id are all validated upstream (a
+        # known clinic, an 8-digit patient ID, an existing task key), so
+        # they're safe to use directly in a filesystem path.
         ext = os.path.splitext(self.source_file_path)[1].lower()
-        dest_dir = os.path.join(SUBMISSIONS_DIR, str(self.patient_id))
+        dest_dir = os.path.join(SUBMISSIONS_DIR, str(self.clinic_id), str(self.patient_id))
         os.makedirs(dest_dir, exist_ok=True)
         dest_path = os.path.join(dest_dir, f"{self.patient_id}_{self.task_id}{ext}")
         shutil.copy(self.source_file_path, dest_path)
@@ -45,6 +47,7 @@ class TaskSubmission:
         data[key] = {
             "patient_id": self.patient_id,
             "task_id": self.task_id,
+            "clinic_id": self.clinic_id,
             "file_path": self.file_path,
             "timestamp": self.timestamp,
             "review_status": self.review_status,

@@ -3,6 +3,17 @@
 {% block content %}
 <h1>Welcome, {{ session.get('username') }}</h1>
 
+{% if announcements %}
+<section class="card announcements">
+  <h2>Clinic Announcements</h2>
+  <ul class="announcement-list">
+    {% for mid, m in announcements.items() %}
+      <li><span class="announcement-date">{{ m.timestamp[:10] }}</span> {{ m.content }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Theme</h2>
   <form method="POST" action="{{ url_for('set_theme') }}" class="inline-form">
@@ -12,37 +23,63 @@
 </section>
 
 <section class="card">
+  <h2>Upcoming Appointments</h2>
+  {% if upcoming_appointments %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>When</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for aid, a in upcoming_appointments.items()|sort(attribute='1.scheduled_at') %}
+          <tr><td>{{ a.scheduled_at }}</td><td>{{ a.notes or '-' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>No upcoming appointments.</p>
+  {% endif %}
+</section>
+
+<section class="card">
   <h2>My Health Tasks</h2>
-  <table>
-    <thead>
-      <tr><th>Title</th><th>Due</th><th>Status</th><th>Outcome</th><th>Submit</th></tr>
-    </thead>
-    <tbody>
-      {% for tid, t in tasks.items() %}
-      {% set submission = submissions.values()|selectattr('task_id', 'equalto', tid)|first %}
-      <tr>
-        <td>{{ t.title }}<br><small>{{ t.description }}</small></td>
-        <td>{{ t.due_date }}</td>
-        <td>{{ submission.review_status if submission else 'Not submitted' }}</td>
-        <td>{{ submission.notes if submission and submission.notes else '-' }}</td>
-        <td>
-          <form method="POST" action="{{ url_for('submit_task', task_id=tid) }}"
-                enctype="multipart/form-data" class="inline-form">
-            <input type="file" name="file" accept=".txt,.csv,.pdf" required>
-            <button type="submit">Upload</button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5">No tasks assigned yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Due</th><th>Status</th><th>Outcome</th><th>Submit</th></tr>
+      </thead>
+      <tbody>
+        {% for tid, t in tasks.items() %}
+        {% set submission = submissions.values()|selectattr('task_id', 'equalto', tid)|first %}
+        <tr>
+          <td>
+            {{ t.title }}<br><small>{{ t.description }}</small>
+            {% if t.attachment_path %}
+              <br><a href="{{ url_for('download_task_attachment', task_id=tid) }}">
+                Download {{ t.attachment_original_name or 'attachment' }}</a>
+            {% endif %}
+          </td>
+          <td>{{ t.due_date }}</td>
+          <td>{{ submission.review_status if submission else 'Not submitted' }}</td>
+          <td>{{ submission.notes if submission and submission.notes else '-' }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('submit_task', task_id=tid) }}"
+                  enctype="multipart/form-data" class="inline-form" data-validate="submit-form">
+              <input type="file" name="file" accept=".txt,.csv,.pdf" required data-validate-ext>
+              <button type="submit">Upload</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No tasks assigned yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section class="card">
   <h2>Private Engagement</h2>
   <p>You have <strong>{{ engagement_points }}</strong> Engagement Points from on-time
-     task completions. Visible only to you.</p>
+     task completions. Visible only to you. <a href="{{ url_for('engagement') }}">View your trend &rarr;</a></p>
 </section>
 {% endblock %}

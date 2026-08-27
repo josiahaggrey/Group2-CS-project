@@ -8,11 +8,13 @@
   <p>Pending reviews: <strong>{{ pending_count }}</strong></p>
   <p>Tasks you've assigned: <strong>{{ tasks|length }}</strong></p>
   <p>Registered patients: <strong>{{ patients|length }}</strong></p>
+  <p><a href="{{ url_for('analytics') }}">View full analytics &rarr;</a></p>
 </section>
 
 <section class="card">
   <h2>Assign a Health Task</h2>
-  <form method="POST" action="{{ url_for('create_task') }}" class="stack-form">
+  <form method="POST" action="{{ url_for('create_task') }}" class="stack-form"
+        enctype="multipart/form-data" data-validate="task-form">
     <label>Patient
       <select name="patient_id" required>
         {% for pid, p in patients.items() %}
@@ -29,40 +31,124 @@
     <label>Due date
       <input type="date" name="due_date" required>
     </label>
+    <label>Attachment (optional - .txt, .csv, or .pdf)
+      <input type="file" name="attachment" accept=".txt,.csv,.pdf" data-validate-ext>
+    </label>
+    <p class="field-error" data-error-for="attachment" hidden></p>
     <button type="submit">Assign</button>
   </form>
 </section>
 
 <section class="card">
-  <h2>Submissions Awaiting Review</h2>
-  <table>
-    <thead>
-      <tr><th>Patient</th><th>Task</th><th>Submitted</th><th>Status</th><th>Review</th></tr>
-    </thead>
-    <tbody>
-      {% for key, s in submissions.items() %}
-      <tr>
-        <td>{{ s.patient_id }}</td>
-        <td>{{ tasks.get(s.task_id, {}).get('title', s.task_id) }}</td>
-        <td>{{ s.timestamp }}</td>
-        <td>{{ s.review_status }}</td>
-        <td>
-          <form method="POST" action="{{ url_for('review_submission', key=key) }}" class="inline-form">
-            <select name="outcome">
-              {% for outcome in review_outcomes %}
-                <option value="{{ outcome }}" {% if outcome == s.review_status %}selected{% endif %}>{{ outcome }}</option>
-              {% endfor %}
-            </select>
-            <input type="text" name="notes" placeholder="Notes" value="{{ s.notes or '' }}">
-            <button type="submit">Save</button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5">No submissions yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h2>Submissions</h2>
+  <form method="GET" action="{{ url_for('clinician_dashboard') }}" class="inline-form filter-form">
+    <label>Patient
+      <select name="patient">
+        <option value="">All patients</option>
+        {% for pid, p in patients.items() %}
+          <option value="{{ pid }}" {% if pid == filter_patient %}selected{% endif %}>{{ p.name }} ({{ pid }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Task
+      <select name="task">
+        <option value="">All tasks</option>
+        {% for tid, t in tasks.items() %}
+          <option value="{{ tid }}" {% if tid == filter_task %}selected{% endif %}>{{ t.title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Filter</button>
+    {% if filter_patient or filter_task %}
+      <a href="{{ url_for('clinician_dashboard') }}" class="clear-filter">Clear</a>
+    {% endif %}
+  </form>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Patient</th><th>Task</th><th>Submitted</th><th>Status</th><th>File</th><th>Review</th></tr>
+      </thead>
+      <tbody>
+        {% for key, s in submissions.items() %}
+        <tr>
+          <td>{{ s.patient_id }}</td>
+          <td>{{ tasks.get(s.task_id, {}).get('title', s.task_id) }}</td>
+          <td>{{ s.timestamp }}</td>
+          <td>{{ s.review_status }}</td>
+          <td class="file-links">
+            {% if s.file_path %}
+              <a href="{{ url_for('preview_submission', key=key) }}">Preview</a>
+              <a href="{{ url_for('download_submission_file', key=key) }}">Download</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            <form method="POST" action="{{ url_for('review_submission', key=key) }}" class="inline-form">
+              <select name="outcome">
+                {% for outcome in review_outcomes %}
+                  <option value="{{ outcome }}" {% if outcome == s.review_status %}selected{% endif %}>{{ outcome }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" name="notes" placeholder="Notes" value="{{ s.notes or '' }}">
+              <button type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No submissions match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Appointments</h2>
+  <form method="POST" action="{{ url_for('create_appointment') }}" class="stack-form">
+    <label>Patient
+      <select name="patient_id" required>
+        {% for pid, p in patients.items() %}
+          <option value="{{ pid }}">{{ p.name }} ({{ pid }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Date &amp; time
+      <input type="datetime-local" name="scheduled_at" required>
+    </label>
+    <label>Notes (optional, administrative only)
+      <input type="text" name="notes">
+    </label>
+    <button type="submit">Schedule</button>
+  </form>
+
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Patient</th><th>When</th><th>Status</th><th>Update</th></tr></thead>
+      <tbody>
+        {% for aid, a in appointments.items()|sort(attribute='1.scheduled_at') %}
+        <tr>
+          <td>{{ a.patient_id }}</td>
+          <td>{{ a.scheduled_at }}</td>
+          <td><span class="status-chip status-{{ a.status|lower|replace(' ', '-') }}">{{ a.status }}</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('update_appointment_status', appointment_id=aid) }}" class="inline-form">
+              <select name="status">
+                {% for status in ["Scheduled", "Completed", "No-Show", "Cancelled"] %}
+                  <option value="{{ status }}" {% if status == a.status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit">Update</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No appointments scheduled yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section class="card">
@@ -71,6 +157,10 @@
     <input type="hidden" name="broadcast" value="on">
     <label>Message
       <textarea name="content" required></textarea>
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="urgent">
+      Urgent - also email every patient
     </label>
     <button type="submit">Broadcast to all patients</button>
   </form>

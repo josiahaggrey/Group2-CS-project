@@ -8,20 +8,51 @@
 </p>
 
 <section class="card">
-  <table>
-    <thead><tr><th>From</th><th>Message</th><th>Sent</th></tr></thead>
-    <tbody>
-      {% for mid, m in messages.items()|sort(attribute='1.timestamp', reverse=True) %}
-      <tr>
-        <td>{{ 'Clinic announcement' if m.broadcast else m.sender_id }}</td>
-        <td>{{ m.content }}</td>
-        <td>{{ m.timestamp }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="3">No messages yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h2>Conversations</h2>
+  <input type="search" placeholder="Search conversations..." class="search-box"
+         data-search-target="contact-list" aria-label="Search conversations">
+  <ul class="contact-list" id="contact-list">
+    {% for contact in contacts %}
+      <li data-search-text="{{ contact.name|lower }} {{ contact.user_id }}">
+        <a href="{{ url_for('conversation', contact_id=contact.user_id) }}">
+          {{ contact.name }} <span class="dim">({{ contact.user_id }})</span>
+        </a>
+      </li>
+    {% else %}
+      <li class="dim">No conversations yet - start one below.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if announcements %}
+<section class="card">
+  <h2>Clinic Announcements</h2>
+  <input type="search" placeholder="Search announcements..." class="search-box"
+         data-search-target="announcement-list" aria-label="Search announcements">
+  <ul class="announcement-list" id="announcement-list">
+    {% for mid, m in announcements.items()|sort(attribute='1.timestamp', reverse=True) %}
+      <li data-search-text="{{ m.content|lower }}">
+        <span class="announcement-date">{{ m.timestamp }}</span> {{ m.content }}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Sent</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>To</th><th>Message</th><th>Sent</th></tr></thead>
+      <tbody>
+        {% for mid, m in sent.items()|sort(attribute='1.timestamp', reverse=True) %}
+        <tr><td>{{ m.recipient_id }}</td><td>{{ m.content }}</td><td>{{ m.timestamp }}</td></tr>
+        {% else %}
+        <tr><td colspan="3">You haven't sent any messages yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section class="card">

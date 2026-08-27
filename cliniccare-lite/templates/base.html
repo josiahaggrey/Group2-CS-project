@@ -8,14 +8,23 @@
 </head>
 <body class="{{ session.get('theme', 'colorful') }}-theme">
   <nav class="topnav">
-    <a class="brand" href="{{ url_for('index') }}">ClinicCare-Lite</a>
-    <div class="nav-links">
+    <div class="topnav-row">
+      <a class="brand" href="{{ url_for('index') }}">ClinicCare-Lite</a>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-links">Menu</button>
+    </div>
+    <div class="nav-links" id="nav-links">
       {% if session.get('user_id') %}
         <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('inbox') }}">Inbox</a>
-        {% if session.get('role') == 'patient' %}
+        {% if session.get('role') == 'clinician' %}
+          <a href="{{ url_for('analytics') }}">Analytics</a>
+        {% else %}
           <a href="{{ url_for('engagement') }}">My Engagement</a>
         {% endif %}
+        <a href="{{ url_for('inbox') }}" class="inbox-link">
+          Inbox
+          <span class="badge{{ ' badge-empty' if unread_count == 0 else '' }}" id="unread-badge"
+                data-unread="{{ unread_count }}">{{ unread_count }}</span>
+        </a>
         <span class="user-chip">{{ session.get('username') }} ({{ session.get('role') }})</span>
         <a href="{{ url_for('logout') }}">Log out</a>
       {% else %}
@@ -38,5 +47,7 @@
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+
+  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Conversation with {{ contact.name if contact else contact_id }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('inbox') }}">&larr; Back to Inbox</a></p>
+<h1>{{ contact.name if contact else contact_id }} <span class="dim">({{ contact_id }})</span></h1>
+
+<section class="card">
+  <ul class="thread">
+    {% for mid, m in messages.items()|sort(attribute='1.timestamp') %}
+      <li class="thread-message {{ 'thread-mine' if m.sender_id == user_id else 'thread-theirs' }}">
+        <div class="thread-bubble">{{ m.content }}</div>
+        <div class="thread-meta">{{ m.timestamp }}</div>
+      </li>
+    {% else %}
+      <li class="dim">No messages yet - say hello below.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <form method="POST" action="{{ url_for('send_message') }}" class="stack-form">
+    <input type="hidden" name="recipient_id" value="{{ contact_id }}">
+    <label>Message
+      <textarea name="content" required></textarea>
+    </label>
+    <button type="submit">Send</button>
+  </form>
+</section>
+{% endblock %}
