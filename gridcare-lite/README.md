@@ -27,6 +27,10 @@ label or dashboard row without the GUI reaching into its fields. Screens in
 `NewOutageForm` calls `Outage.report(...)`, it doesn't build the `INSERT`
 itself. `db.py` owns only the schema (`init_db()`), not query logic.
 
+Visual styling is factored out into `theme.py` (colour/font tokens plus one
+`configure_style()` call) so presentation stays separate from the screens'
+logic - the same domain/presentation split as `models.py` vs `app.py`.
+
 ## Setup
 
 ```bash
@@ -71,6 +75,13 @@ pip install -r requirements.txt
 - Automatic substation reference-data import on first run (see Usage step 3)
   - no more empty picker on a fresh clone.
 - Login with bcrypt-hashed passwords, role-based dashboard routing.
+- Log Out (dashboard header) — returns to the login screen without
+  restarting the app; a fresh `LoginWindow` is rebuilt against the same
+  open `conn`, so no data is lost or re-read from disk.
+- A consistent visual theme (`theme.py`): slate header bar with the current
+  user/role, amber primary-action buttons, bordered cards for the login and
+  popup forms, and striped Treeview rows - applied once via
+  `configure_style()`, not per-screen.
 - Outage dashboard (all roles) with live refresh.
 - Log new outage (engineer/admin) against a substation.
 - Assign work order to a technician (admin) — moves the outage to "In Progress".
