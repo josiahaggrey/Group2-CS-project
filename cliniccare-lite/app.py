@@ -18,7 +18,7 @@ from functools import wraps
 from flask import (Flask, abort, flash, jsonify, redirect, render_template,
                     request, send_file, session, url_for)
 
-from config import REVIEW_OUTCOMES, SECRET_KEY
+from config import EMAIL_ADDRESS, EMAIL_PASSWORD, REVIEW_OUTCOMES, SECRET_KEY
 from models.analytics import Analytics
 from models.appointment import Appointment
 from models.clinic import Clinic
@@ -265,7 +265,7 @@ def create_task():
     task.save()
 
     patient = User.get(patient_id)
-    send_email(patient.email, "New health task assigned",
+    send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, patient.email, "New health task assigned",
                f"You have a new task: {title} (due {due_date}).")
 
     flash("Task assigned.", "success")
@@ -335,13 +335,13 @@ def submit_task(task_id):
             pass  # malformed due_date - skip the engagement-point award, not the submission
 
     patient = User.get(patient_id)
-    send_email(patient.email, "Submission received",
+    send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, patient.email, "Submission received",
                f"We received your submission for '{task['title']}'"
                f"{' (on time)' if on_time else ''}. A clinician will review it soon.")
 
     clinician = User.get(task["created_by"])
     if clinician:
-        send_email(clinician.email, "New submission received",
+        send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, clinician.email, "New submission received",
                     f"Patient {patient_id} submitted for task '{task['title']}'.")
 
     return redirect(url_for("patient_dashboard"))
@@ -366,7 +366,7 @@ def review_submission(key):
 
     patient = User.get(submission["patient_id"])
     if patient:
-        send_email(patient.email, "Your submission has been reviewed",
+        send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, patient.email, "Your submission has been reviewed",
                     f"Outcome: {outcome}\nNotes: {notes or '(none)'}")
 
     flash("Review recorded.", "success")
@@ -442,7 +442,7 @@ def create_appointment():
     appointment.save()
 
     patient = User.get(patient_id)
-    send_email(patient.email, "Appointment scheduled",
+    send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, patient.email, "Appointment scheduled",
                f"An appointment has been scheduled for {scheduled_at}."
                + (f" Notes: {notes}" if notes else ""))
 
@@ -528,7 +528,8 @@ def send_message():
 
     if urgent:
         for patient_id, patient in User.all_by_role("patient").items():
-            send_email(patient["email"], "Urgent clinic announcement", content)
+            send_email(EMAIL_ADDRESS, EMAIL_PASSWORD, patient["email"],
+                       "Urgent clinic announcement", content)
 
     if broadcast:
         flash("Announcement sent.", "success")

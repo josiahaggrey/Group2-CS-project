@@ -1,19 +1,17 @@
 """Email notification helper.
 
-Falls back to console logging when SMTP credentials aren't configured, so the
-app runs out of the box during development without real email credentials.
-Set EMAIL_ADDRESS / EMAIL_PASSWORD environment variables (use a test/sandbox
-account, never hard-code credentials) to send real emails.
+Matches the course spec's sample signature exactly - send_email() takes the
+sender's credentials as parameters rather than reading them internally, so
+the caller (app.py, send_appointment_reminders.py) owns sourcing them from
+EMAIL_ADDRESS / EMAIL_PASSWORD environment variables (see config.py), never
+hard-coded. Falls back to console logging when they're empty, so the app
+runs out of the box during development without real email credentials.
 """
-import os
 import smtplib
 from email.mime.text import MIMEText
 
 
-def send_email(recipient_email, subject, body):
-    sender_email = os.environ.get("EMAIL_ADDRESS")
-    sender_password = os.environ.get("EMAIL_PASSWORD")
-
+def send_email(sender_email, sender_password, recipient_email, subject, body):
     if not sender_email or not sender_password:
         print(f"[email stub] To: {recipient_email} | Subject: {subject}\n{body}\n")
         return

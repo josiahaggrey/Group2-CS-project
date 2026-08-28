@@ -11,6 +11,7 @@ Safe to run as often as you like - Appointment.due_for_reminder() only
 returns appointments that are still "Scheduled" and haven't already had
 reminder_sent set, so a second run in the same day sends nothing new.
 """
+from config import EMAIL_ADDRESS, EMAIL_PASSWORD
 from models.appointment import Appointment
 from models.user import User
 from utils.email_handler import send_email
@@ -23,7 +24,7 @@ def main():
         if patient is None:
             continue
         send_email(
-            patient.email, "Appointment reminder",
+            EMAIL_ADDRESS, EMAIL_PASSWORD, patient.email, "Appointment reminder",
             f"Reminder: you have an appointment scheduled for "
             f"{appointment['scheduled_at']}."
             + (f" Notes: {appointment['notes']}" if appointment.get("notes") else ""),

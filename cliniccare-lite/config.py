@@ -22,3 +22,10 @@ REVIEW_OUTCOMES = ("Pending", "Reviewed - Normal", "Needs Follow-up", "Escalated
 # is provided so the starter app runs out of the box; override with a real secret
 # via the CLINICCARE_SECRET_KEY environment variable before any real deployment.
 SECRET_KEY = os.environ.get("CLINICCARE_SECRET_KEY", "dev-only-change-me")
+
+# Email sender credentials: read once here, then passed explicitly into every
+# send_email() call (see utils/email_handler.py) rather than read inside it -
+# matches the course spec's sample function signature. Empty by default;
+# send_email() falls back to console logging when these are empty.
+EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
