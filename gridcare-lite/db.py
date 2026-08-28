@@ -1,7 +1,15 @@
 """Database schema and initialisation for GridCare-Lite."""
+import os
 import sqlite3
 
-DB_PATH = "gridcare.db"
+# Resolved from this file's own location, not the current working directory -
+# the same fix already applied to app.py's DEFAULT_SUBSTATIONS_CSV. A bare
+# "gridcare.db" is relative to whatever directory the process happens to be
+# launched from (e.g. VS Code's terminal cwd, not necessarily this folder),
+# so running the app from anywhere else silently created a brand-new, empty
+# database instead of opening the real one - which looks exactly like
+# "my login stopped working" with no error explaining why.
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gridcare.db")
 
 
 def _add_column_if_missing(conn, table, column, coldef):
