@@ -105,9 +105,12 @@ route or another patient's files).
 - **Operational analytics dashboard** for clinicians (`/analytics`): task
   completion rate, pending reviews, average review turnaround, monthly task
   volume, submission-outcome breakdown, appointment no-show rate.
-- **Threaded, per-contact messaging** with a Sent view (`models/message.py:
-  contacts_for`, `sent_by`) instead of one flat inbox list, plus client-side
-  search filtering over conversations and announcements.
+- **Threaded, per-contact messaging** in a single two-pane `templates/chat.html`
+  (conversation list + announcements + sent on the left, the active thread on
+  the right) — matching the course spec's own suggested directory structure,
+  which names this file `chat.html`, not a separate inbox/conversation split.
+  `models/message.py: contacts_for()` / `sent_by()` back the sidebar; the
+  search boxes filter both the conversation list and announcements client-side.
 - **Clinic-wide announcements now appear on the patient dashboard**, not just
   the inbox, with an optional "urgent" flag that emails every patient.
 - **Near-real-time unread badge**: the inbox unread count polls `/inbox/poll`

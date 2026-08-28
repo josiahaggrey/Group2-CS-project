@@ -466,10 +466,11 @@ def update_appointment_status(appointment_id):
 # ---------------------------------------------------------------------------
 # Messaging
 # ---------------------------------------------------------------------------
-@app.route("/inbox")
-@login_required
-def inbox():
-    user_id = session["user_id"]
+def _chat_sidebar_context(user_id):
+    """Shared context both /inbox and /inbox/<contact_id> render into the
+    single chat.html template (per the course spec's templates/chat.html) -
+    the conversation list, announcements, and sent messages don't change
+    based on which conversation (if any) is currently open."""
     contact_ids = Message.contacts_for(user_id)
     contacts = [
         {"user_id": cid, "name": User.get(cid).name if User.exists(cid) else cid}
@@ -477,7 +478,14 @@ def inbox():
     ]
     announcements = {mid: m for mid, m in Message.inbox_for(user_id).items() if m.get("broadcast")}
     sent = Message.sent_by(user_id)
-    return render_template("inbox.html", contacts=contacts, announcements=announcements, sent=sent)
+    return {"contacts": contacts, "announcements": announcements, "sent": sent}
+
+
+@app.route("/inbox")
+@login_required
+def inbox():
+    return render_template("chat.html", contact=None, contact_id=None,
+                            **_chat_sidebar_context(session["user_id"]))
 
 
 @app.route("/inbox/<contact_id>")
@@ -489,8 +497,9 @@ def conversation(contact_id):
     Message.mark_conversation_read(user_id, contact_id)
     messages = Message.conversation(user_id, contact_id)
     contact = User.get(contact_id)
-    return render_template("conversation.html", messages=messages, contact=contact,
-                            contact_id=contact_id, user_id=user_id)
+    return render_template("chat.html", messages=messages, contact=contact,
+                            contact_id=contact_id, user_id=user_id,
+                            **_chat_sidebar_context(user_id))
 
 
 @app.route("/inbox/poll")

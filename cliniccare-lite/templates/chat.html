@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{% if contact %}Chat with {{ contact.name }}{% else %}Chat{% endif %}{% endblock %}
+{% block content %}
+<h1>Chat</h1>
+<p class="notice">
+  This messaging channel is <strong>not monitored continuously</strong> and must
+  not be used for emergencies. For urgent issues, contact the clinic directly.
+</p>
+
+<div class="chat-layout">
+  <aside class="chat-sidebar">
+    <section class="card">
+      <h2>Conversations</h2>
+      <input type="search" placeholder="Search conversations..." class="search-box"
+             data-search-target="contact-list" aria-label="Search conversations">
+      <ul class="contact-list" id="contact-list">
+        {% for c in contacts %}
+          <li data-search-text="{{ c.name|lower }} {{ c.user_id }}">
+            <a href="{{ url_for('conversation', contact_id=c.user_id) }}"
+               class="{{ 'contact-active' if contact_id == c.user_id else '' }}">
+              {{ c.name }} <span class="dim">({{ c.user_id }})</span>
+            </a>
+          </li>
+        {% else %}
+          <li class="dim">No conversations yet - start one below.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    {% if announcements %}
+    <section class="card">
+      <h2>Clinic Announcements</h2>
+      <input type="search" placeholder="Search announcements..." class="search-box"
+             data-search-target="announcement-list" aria-label="Search announcements">
+      <ul class="announcement-list" id="announcement-list">
+        {% for mid, m in announcements.items()|sort(attribute='1.timestamp', reverse=True) %}
+          <li data-search-text="{{ m.content|lower }}">
+            <span class="announcement-date">{{ m.timestamp }}</span> {{ m.content }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>Sent</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>To</th><th>Message</th><th>Sent</th></tr></thead>
+          <tbody>
+            {% for mid, m in sent.items()|sort(attribute='1.timestamp', reverse=True) %}
+            <tr><td>{{ m.recipient_id }}</td><td>{{ m.content }}</td><td>{{ m.timestamp }}</td></tr>
+            {% else %}
+            <tr><td colspan="3">You haven't sent any messages yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </aside>
+
+  <section class="chat-main card">
+    {% if contact %}
+      <h2>{{ contact.name }} <span class="dim">({{ contact_id }})</span></h2>
+      <ul class="thread">
+        {% for mid, m in messages.items()|sort(attribute='1.timestamp') %}
+          <li class="thread-message {{ 'thread-mine' if m.sender_id == user_id else 'thread-theirs' }}">
+            <div class="thread-bubble">{{ m.content }}</div>
+            <div class="thread-meta">{{ m.timestamp }}</div>
+          </li>
+        {% else %}
+          <li class="dim">No messages yet - say hello below.</li>
+        {% endfor %}
+      </ul>
+      <form method="POST" action="{{ url_for('send_message') }}" class="stack-form">
+        <input type="hidden" name="recipient_id" value="{{ contact_id }}">
+        <label>Message
+          <textarea name="content" required></textarea>
+        </label>
+        <button type="submit">Send</button>
+      </form>
+    {% else %}
+      <h2>Start a conversation</h2>
+      <p class="dim">Pick a conversation on the left, or message someone new by ID below.</p>
+      <form method="POST" action="{{ url_for('send_message') }}" class="stack-form">
+        <label>Recipient ID
+          <input type="text" name="recipient_id" pattern="\d{8}" maxlength="8" required>
+        </label>
+        <label>Message
+          <textarea name="content" required></textarea>
+        </label>
+        <button type="submit">Send</button>
+      </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
