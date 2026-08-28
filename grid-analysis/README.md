@@ -77,6 +77,16 @@ pip install -r requirements.txt
    `create_grid_map(substations, lines)` from `analysis_starter.py`, or add it to
    `main()`.
 
+7. Run the Task 3.1 dashboard:
+
+   ```bash
+   streamlit run dashboard.py
+   ```
+
+   Reads from `data/cleaned/` (so run steps 1-2 at least once first). Opens
+   an interactive Streamlit app at `http://localhost:8501` with five tabs -
+   see "Task 3.1: Dashboard" below.
+
 ## Design (Tasks 1.1-1.3)
 
 `tasks/task_1_1_data_cleaning.py`, `task_1_2_eda.py`, and
@@ -109,6 +119,45 @@ Every orchestrator class (`DataCleaningPipeline`, `EDAPipeline`,
 `DataIntegrationPipeline`) contains no data-transformation logic of its own -
 only wiring - so the actual logic lives in small, single-responsibility
 classes that unit tests can instantiate directly with synthetic data.
+
+## Task 3.1: Dashboard
+
+`dashboard.py` is a single-file Streamlit app matching the spec's required
+tab structure exactly:
+
+- **Overview** — executive-summary metric tiles (substation/line/utility
+  counts, total capacity, % lines active, network density) plus regional
+  and voltage-level distribution charts.
+- **Network** — region-filterable force-directed graph (node size = degree
+  centrality, colour = voltage), a top-10 centrality table, and an
+  interactive **N-1 contingency check**: pick any substation, see the
+  connected-component count before/after removing it.
+- **Geography** — a Plotly `Scattergeo` map of every substation (sized by
+  capacity, coloured by voltage) with lines drawn between connected pairs
+  (green = Active, amber = Under Maintenance), filterable by region,
+  voltage, and utility.
+- **Reliability** — utility footprint, line-status breakdown, asset-age
+  histogram, capacity distribution by voltage tier, and the regions with
+  the fewest substations.
+- **Search** — a substation finder (region/voltage/capacity/connections/
+  centrality rank) and a multi-utility comparison table/chart.
+
+**Design note - what this dashboard does *not* build on:** Tasks 2.1-2.3
+(the standalone network-analysis, geospatial, and business-intelligence
+scripts+reports) haven't been produced as separate deliverables yet - see
+the checklist below. Rather than block the dashboard on those, Task 3.1
+computes everything it needs directly with NetworkX/pandas on the cleaned
+Task 1.1-1.3 data. That satisfies the dashboard's own requirement ("a
+fully functional interactive dashboard integrating all analyses") but the
+individual Task 2.1/2.2/2.3 write-ups (a dedicated report per task,
+matching the format Tasks 1.1-1.3 already have) are still outstanding and
+worth doing for the record, even though their analysis now also exists
+inside `dashboard.py`.
+
+Uses only Plotly for every chart/map (matching the course spec's own
+Task 3.1 sample code, which imports `streamlit`, `plotly.express`, and
+`plotly.graph_objects` - not `folium`), so no `streamlit-folium` dependency
+is needed to run it.
 
 ## Testing
 
